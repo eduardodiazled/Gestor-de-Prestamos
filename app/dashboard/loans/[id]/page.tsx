@@ -7,7 +7,8 @@ import { format } from "date-fns"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Loader2, FileText, ArrowLeft, Download, Upload } from "lucide-react"
+import { Loader2, FileText, ArrowLeft, Download, Upload, CheckCircle } from "lucide-react"
+import { generatePazYSalvo } from "@/lib/pdf/generator"
 
 export default function LoanDetailsPage() {
     const params = useParams()
