@@ -1,0 +1,10 @@
+ID Préstamo,Fecha de Pago,Monto Pagado,Tipo de Pago,Notas
+1,29/09/2025,"$200,000",Interes,Mora de 7 días perdonada 
+2,03/10/2025,"$160,000",Interes,Mora perdonada
+1,31/10/2025,"$200,000",Interes,
+2,03/11/2025,"$160,000",Interes,
+4,11/11/2025,"$50,000",Interes,
+4,11/11/2025,"$500,000",Abono a Capital,
+3,13/11/2025,"$500,000",Interes,
+1,01/12/2025,"$200,000",Interes,
+2,05/12/2025,"$160,000",Interes,

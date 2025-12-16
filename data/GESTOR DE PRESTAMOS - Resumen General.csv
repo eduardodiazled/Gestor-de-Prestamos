@@ -1,0 +1,7 @@
+ID Préstamo,Nombre del Cliente,Socia,Fecha de Desembolso,Monto Prestado,Tasa de Interés Mensual,Total Capital Pagado,Saldo Pendiente (Capital),Mora de Intereses,Total a Pagar (Intereses),Total Intereses Pagados,Estado
+1,Jener Martinez,Mariangelica,29/8/2025,"$2,000,000",10%,$0,"$2,000,000",,"$200,000","$600,000",⚠️ En Mora
+2,Carlos Vanegas,Mariangelica,5/9/2025,"$1,600,000",10%,$0,"$1,600,000",,"$160,000","$480,000",⚠️ En Mora
+3,Jhonger Davila,Herminia,11/10/2025,"$5,000,000",10%,$0,"$5,000,000",,"$500,000","$500,000",⚠️ En Mora
+4,Ludys Ospino,Herminia,15/10/2025,"$500,000",10%,"$500,000",$0,,$0,"$50,000",✅ Pagado
+5,Julio Diaz ,Mariangelica,7/11/2025,"$1,000,000",10%,$0,"$1,000,000",,"$100,000",$0,⚠️ En Mora
+6,Eleixer Beleño,Mariangelica,7/11/2025,"$1,000,000",10%,$0,"$1,000,000",,"$100,000",$0,⚠️ En Mora
