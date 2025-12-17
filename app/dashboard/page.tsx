@@ -15,13 +15,16 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { ArrowRight, LogOut } from "lucide-react"
+import { useRouter } from "next/navigation"
 
 export default function Dashboard() {
+    const router = useRouter()
     const handleLogout = async () => {
         await supabase.auth.signOut()
-        window.location.href = '/login'
+        router.refresh()
+        router.replace('/login')
     }
-    const [profile, setProfile] = useState<any>(null) // Added profile state
+    const [profile, setProfile] = useState<any>(null)
     const [stats, setStats] = useState({
         activeCapital: 0,
         totalProfit: 0,
@@ -42,15 +45,19 @@ export default function Dashboard() {
             // 0. Check User & Role (Redirect if Investor)
             const { data: { user } } = await supabase.auth.getUser()
             if (!user) {
-                window.location.href = '/login'
-                return
+                if (!user) {
+                    router.replace('/login')
+                    return
+                }
             }
 
             const { data: profileData } = await supabase.from('profiles').select('*').eq('id', user.id).single()
 
             if (profileData?.role === 'investor') {
-                window.location.href = '/dashboard/investor' // Redirect Logic
-                return
+                if (profileData?.role === 'investor') {
+                    router.replace('/dashboard/investor')
+                    return
+                }
             }
             setProfile(profileData)
 
