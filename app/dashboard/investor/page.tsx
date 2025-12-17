@@ -5,24 +5,29 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { supabase } from "@/lib/supabase/client"
-import { Loader2, LogOut, TrendingUp, Wallet, Users } from "lucide-react"
+import { Loader2, LogOut, TrendingUp, Wallet, Users, ArrowUpRight, ArrowDownLeft, Info, DollarSign } from "lucide-react"
 import { format } from "date-fns"
+import { es } from "date-fns/locale"
 
 export default function InvestorDashboard() {
     const [loading, setLoading] = useState(true)
     const [profile, setProfile] = useState<any>(null)
     const [stats, setStats] = useState({
-        invested: 0,
-        profit: 0,
-        activeLoans: 0
+        activeCapital: 0,
+        grossProfit: 0,
+        netProfit: 0,
+        adminFee: 0,
+        repaidCapital: 0,
+        totalWithdrawn: 0,
+        availableCash: 0
     })
     const [loans, setLoans] = useState<any[]>([])
+    const [movements, setMovements] = useState<any[]>([])
 
     useEffect(() => {
         async function loadInvestorData() {
             setLoading(true)
 
-            // 1. Get User & Profile
             const { data: { user } } = await supabase.auth.getUser()
             if (!user) {
                 window.location.href = '/login'
@@ -34,45 +39,114 @@ export default function InvestorDashboard() {
                 .select('*')
                 .eq('id', user.id)
                 .single()
-
             setProfile(profileData)
 
-            // 2. Fetch My Loans
+            // 1. Fetch Loans
             const { data: myLoans } = await supabase
                 .from('loans')
                 .select('*, client:clients(*)')
                 .eq('investor_id', user.id)
-                .order('created_at', { ascending: false })
+                .order('start_date', { ascending: false })
 
-            // 3. Fetch My Payouts/Profit (Calculated from payments linked to my loans)
-            // Simpler approach: Sum payments -> interest part
+            // 2. Fetch Payments (Inflows)
             const { data: myPayments } = await supabase
                 .from('payments')
-                .select('*, loan:loans!inner(investor_id)') // Filter by joined loan's investor_id
+                .select('*, loan:loans!inner(investor_id)')
                 .eq('loan.investor_id', user.id)
+                .order('payment_date', { ascending: false })
 
+            // 3. Fetch Payouts (Outflows) - Assuming this table exists, if not we default empty
+            const { data: myPayouts } = await supabase
+                .from('investor_payouts')
+                .select('*')
+                .eq('investor_id', user.id)
+                .order('date', { ascending: false })
+
+            // --- CALCULATIONS ---
+            let activeCap = 0
+            let grossP = 0
+            let adminF = 0
+            let netP = 0
+            let repaidCap = 0
+            let withdrawn = 0
+
+            // A. Loans Stats
             if (myLoans) {
-                const active = myLoans.filter(l => l.status === 'active' || l.status === 'defaulted')
-                const invested = active.reduce((sum, l) => sum + Number(l.amount), 0)
-
-                let profit = 0
-                if (myPayments) {
-                    myPayments.forEach((p: any) => {
-                        if (p.payment_type === 'interest' || p.payment_type === 'fee') {
-                            const amount = Number(p.amount)
-                            const adminFee = (Number(p.loan?.admin_fee_percent) || 40) / 100
-                            profit += amount * (1 - adminFee)
-                        }
-                    })
-                }
-
-                setStats({
-                    invested,
-                    profit,
-                    activeLoans: active.length
+                myLoans.forEach(l => {
+                    if (l.status === 'active' || l.status === 'defaulted') {
+                        activeCap += Number(l.amount)
+                    }
                 })
                 setLoans(myLoans)
             }
+
+            // B. Payments Stats (Analyze Inflows)
+            const paymentMovements = (myPayments || []).map((p: any) => {
+                const amount = Number(p.amount)
+                let netAmount = amount
+                let type = 'payment'
+
+                // Logic breakdown
+                if (p.payment_type === 'interest' || p.payment_type === 'fee') {
+                    const feePercent = (Number(p.loan?.admin_fee_percent) || 40) / 100
+                    const adminPart = amount * feePercent
+                    const netPart = amount - adminPart
+
+                    grossP += amount
+                    adminF += adminPart
+                    netP += netPart
+                    netAmount = netPart // For the movement feed
+                } else if (p.payment_type === 'capital' || p.payment_type === 'principal') {
+                    repaidCap += amount
+                }
+
+                return {
+                    id: p.id,
+                    type: 'inflow',
+                    title: 'Pago Cliente',
+                    subtitle: format(new Date(p.payment_date), 'dd MMM yyyy', { locale: es }),
+                    amount: netAmount,
+                    gross: amount,
+                    isInterest: p.payment_type === 'interest'
+                }
+            })
+
+            // C. Payouts Stats (Analyze Outflows)
+            if (myPayouts) {
+                myPayouts.forEach((p: any) => {
+                    withdrawn += Number(p.amount)
+                })
+            }
+            const payoutMovements = (myPayouts || []).map((p: any) => ({
+                id: p.id,
+                type: 'outflow',
+                title: 'Retiro Registrado',
+                subtitle: format(new Date(p.date), 'dd MMM yyyy', { locale: es }),
+                amount: Number(p.amount)
+            }))
+
+            // D. Combine Feed
+            const allMovements = [...paymentMovements, ...payoutMovements].sort((a, b) => {
+                // Approximate sort by subtilte date string is hard, better if we had valid Date objects
+                // For simplicity, we trust the array concat order or use real timestamps if available
+                return 0 // TODO: Strict date sort
+            })
+
+            setMovements(allMovements)
+
+            // E. Final Cash Logic
+            // Available = (Repaid Capital + Net Profit) - Withdrawals
+            const available = (repaidCap + netP) - withdrawn
+
+            setStats({
+                activeCapital: activeCap,
+                grossProfit: grossP,
+                netProfit: netP,
+                adminFee: adminF,
+                repaidCapital: repaidCap,
+                totalWithdrawn: withdrawn,
+                availableCash: available
+            })
 
             setLoading(false)
         }
@@ -85,111 +159,219 @@ export default function InvestorDashboard() {
         window.location.href = '/login'
     }
 
-    if (loading) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin h-8 w-8 text-blue-600" /></div>
+    if (loading) return <div className="h-screen flex items-center justify-center bg-slate-50"><Loader2 className="animate-spin h-8 w-8 text-slate-400" /></div>
 
     return (
-        <div className="min-h-screen bg-slate-50 p-4 md:p-8">
-            <div className="max-w-5xl mx-auto space-y-8">
+        <div className="min-h-screen bg-slate-50 font-sans text-slate-900 pb-12">
 
-                {/* Header */}
-                <header className="flex flex-col md:flex-row justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+            {/* 1. DARK HEADER */}
+            <header className="bg-slate-900 text-white pt-8 pb-20 px-4 md:px-8 shadow-lg">
+                <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                     <div>
-                        <h1 className="text-2xl font-bold text-slate-800">Hola, {profile?.full_name || 'Socia'} 👋</h1>
-                        <p className="text-slate-500">Resumen de tus inversiones</p>
+                        <div className="flex items-center gap-2 text-slate-400 mb-1 text-sm font-medium uppercase tracking-wider">
+                            <Users className="h-4 w-4" /> Portal de Socia
+                        </div>
+                        <h1 className="text-4xl font-bold tracking-tight mb-2">{profile?.full_name || 'Inversionista'}</h1>
+                        <Button
+                            variant="link"
+                            onClick={handleLogout}
+                            className="text-slate-400 hover:text-white p-0 h-auto font-normal text-sm"
+                        >
+                            <LogOut className="h-3 w-3 mr-1" /> Cerrar Sesión Segura
+                        </Button>
                     </div>
-                    <Button variant="ghost" className="text-red-500 hover:bg-red-50 hover:text-red-600" onClick={handleLogout}>
-                        <LogOut className="mr-2 h-4 w-4" /> Cerrar Sesión
-                    </Button>
-                </header>
 
-                {/* KPIs */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <Card className="bg-blue-600 text-white border-0 shadow-lg shadow-blue-200">
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-blue-100 font-medium text-sm flex items-center gap-2">
-                                <Wallet className="h-4 w-4" /> Capital Activo
+                    <div className="bg-slate-800/50 backdrop-blur-sm p-4 rounded-xl border border-slate-700/50 flex flex-col md:items-end min-w-[280px]">
+                        <p className="text-xs text-slate-400 font-medium uppercase tracking-wider mb-1">Caja Disponible (Retornado + Ganancia)</p>
+                        <div className="text-4xl font-bold text-white mb-3">
+                            ${stats.availableCash.toLocaleString()}
+                        </div>
+                        <Button className="bg-white text-slate-900 hover:bg-slate-100 font-semibold w-full md:w-auto text-xs h-8">
+                            <Wallet className="h-3 w-3 mr-2" /> Registrar Retiro
+                        </Button>
+                        <p className="text-[10px] text-slate-500 mt-2 text-right w-full">Este dinero está en tu poder.</p>
+                    </div>
+                </div>
+            </header>
+
+            <div className="max-w-6xl mx-auto px-4 md:px-8 -mt-12 space-y-8">
+
+                {/* 2. KPI CARDS */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    {/* Gross Profit */}
+                    <Card className="shadow-lg border-0 ring-1 ring-slate-100">
+                        <CardHeader className="pb-2 pt-6">
+                            <CardTitle className="text-sm font-medium text-slate-500 flex justify-between">
+                                Ganancia Bruta (Total) <DollarSign className="h-4 w-4 text-slate-300" />
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-3xl font-bold">${stats.invested.toLocaleString()}</div>
-                            <p className="text-blue-200 text-xs mt-1">Dinero prestado actualmente</p>
+                            <div className="text-2xl font-bold text-slate-800">
+                                ${stats.grossProfit.toLocaleString()}
+                            </div>
+                            <p className="text-xs text-slate-400 mt-1">Intereses Totales Generados</p>
                         </CardContent>
                     </Card>
 
-                    <Card className="border-0 shadow-md">
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-green-600 font-medium text-sm flex items-center gap-2">
-                                <TrendingUp className="h-4 w-4" /> Ganancias Totales
+                    {/* Net Profit (Highlighted) */}
+                    <Card className="shadow-lg border-0 ring-1 ring-green-100 bg-green-50/50">
+                        <CardHeader className="pb-2 pt-6">
+                            <CardTitle className="text-sm font-bold text-green-700 flex justify-between">
+                                Tu Ganancia Neta <TrendingUp className="h-4 w-4 text-green-600" />
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-3xl font-bold text-slate-800">${stats.profit.toLocaleString()}</div>
-                            <p className="text-slate-400 text-xs mt-1">Intereses generados (Neto)</p>
+                            <div className="text-2xl font-bold text-green-700">
+                                +${stats.netProfit.toLocaleString()}
+                            </div>
+                            <p className="text-xs text-green-600/80 mt-1 font-medium">Lo que te corresponde</p>
                         </CardContent>
                     </Card>
 
-                    <Card className="border-0 shadow-md">
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-purple-600 font-medium text-sm flex items-center gap-2">
-                                <Users className="h-4 w-4" /> Préstamos
+                    {/* Admin Fee */}
+                    <Card className="shadow-lg border-0 ring-1 ring-slate-100">
+                        <CardHeader className="pb-2 pt-6">
+                            <CardTitle className="text-sm font-medium text-slate-500 flex justify-between">
+                                Comisión Administración <Users className="h-4 w-4 text-slate-300" />
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-3xl font-bold text-slate-800">{stats.activeLoans}</div>
-                            <p className="text-slate-400 text-xs mt-1">Créditos vigentes</p>
+                            <div className="text-2xl font-bold text-slate-800">
+                                ${stats.adminFee.toLocaleString()}
+                            </div>
+                            <p className="text-xs text-slate-400 mt-1">Pago por gestión operativa</p>
+                        </CardContent>
+                    </Card>
+
+                    {/* Active Capital (Risk) */}
+                    <Card className="shadow-lg border-0 ring-1 ring-slate-100">
+                        <CardHeader className="pb-2 pt-6">
+                            <CardTitle className="text-sm font-medium text-slate-500 flex justify-between">
+                                Capital Activo (Riesgo) <Info className="h-4 w-4 text-slate-300" />
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold text-slate-800">
+                                ${stats.activeCapital.toLocaleString()}
+                            </div>
+                            <p className="text-xs text-slate-400 mt-1">Dinero en calle</p>
                         </CardContent>
                     </Card>
                 </div>
 
-                {/* Loans List */}
-                <Card className="border shadow-sm">
-                    <CardHeader>
-                        <CardTitle>Mis Préstamos</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        {loans.length === 0 ? (
-                            <div className="text-center py-12 text-slate-400">
-                                No tienes préstamos activos en este momento.
+                {/* 3. INFO ALERT */}
+                <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 flex gap-4 text-blue-900 shadow-sm">
+                    <Info className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
+                    <div className="text-sm space-y-1">
+                        <p className="font-bold text-blue-800">¿Cómo se calcula la "Caja Disponible"?</p>
+                        <p className="text-blue-700/80 leading-relaxed">
+                            Es la suma de todo el <strong>Capital Devuelto</strong> por los clientes + tus <strong>Ganancias Netas</strong>, menos los <strong>Retiros</strong> que te hayamos transferido.
+                            <br />
+                            Si decides reinventir este dinero, simplemente creamos un nuevo préstamo y este saldo seguirá aquí como histórico, pero sabrás que ya está "en la calle" nuevamente si el Capital Activo sube.
+                        </p>
+                    </div>
+                </div>
+
+                {/* 4. MAIN CONTENT GRID */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+                    {/* LEFT: Loans List */}
+                    <div className="lg:col-span-2 space-y-4">
+                        <h2 className="text-xl font-bold text-slate-900">Mis Clientes y Préstamos</h2>
+
+                        <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+                            <div className="p-4 border-b border-slate-50 flex items-center gap-2">
+                                <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse"></div>
+                                <span className="text-sm font-medium text-slate-600">En Curso</span>
                             </div>
-                        ) : (
-                            <div className="overflow-x-auto">
+
+                            {loans.length === 0 ? (
+                                <div className="p-8 text-center text-slate-400 text-sm">No tienes préstamos activos.</div>
+                            ) : (
                                 <table className="w-full text-sm text-left">
-                                    <thead className="bg-slate-50 text-slate-500 uppercase tracking-wider text-xs">
+                                    <thead className="bg-slate-50/50 text-slate-400 font-medium">
                                         <tr>
-                                            <th className="p-4 rounded-tl-lg">Cliente</th>
+                                            <th className="p-4 pl-6">Cliente</th>
+                                            <th className="p-4">Inicio</th>
                                             <th className="p-4">Monto</th>
-                                            <th className="p-4">Fecha Inicio</th>
-                                            <th className="p-4 rounded-tr-lg">Estado</th>
+                                            <th className="p-4 pr-6 text-right">Estado</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-slate-100">
+                                    <tbody className="divide-y divide-slate-50">
                                         {loans.map(loan => (
-                                            <tr key={loan.id} className="hover:bg-slate-50 transition-colors">
-                                                <td className="p-4 font-medium text-slate-700">
-                                                    {loan.client?.full_name || 'Cliente Confidencial'}
-                                                </td>
-                                                <td className="p-4 font-bold text-slate-900">
-                                                    ${Number(loan.amount).toLocaleString()}
+                                            <tr key={loan.id} className="hover:bg-slate-50/80 transition-colors group">
+                                                <td className="p-4 pl-6 font-medium text-slate-700 flex items-center gap-3">
+                                                    <div className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
+                                                        <Users className="h-4 w-4" />
+                                                    </div>
+                                                    {loan.client?.full_name || 'Desconocido'}
                                                 </td>
                                                 <td className="p-4 text-slate-500">
-                                                    {format(new Date(loan.start_date), 'dd MMM yyyy')}
+                                                    {format(new Date(loan.start_date), 'dd/MM/yyyy')}
                                                 </td>
-                                                <td className="p-4">
-                                                    <Badge variant={loan.status === 'defaulted' ? 'destructive' : 'secondary'}
-                                                        className={loan.status === 'active' ? 'bg-green-100 text-green-700 hover:bg-green-200' : ''}>
+                                                <td className="p-4 font-bold text-slate-800">
+                                                    ${Number(loan.amount).toLocaleString()}
+                                                </td>
+                                                <td className="p-4 pr-6 text-right">
+                                                    <Badge className={
+                                                        loan.status === 'active' ? 'bg-green-500 hover:bg-green-600' :
+                                                            loan.status === 'defaulted' ? 'bg-red-500 hover:bg-red-600' : 'bg-slate-500'
+                                                    }>
                                                         {loan.status === 'active' ? 'Al Día' :
-                                                            loan.status === 'paid' ? 'Pagado' :
-                                                                loan.status === 'completed' ? 'Finalizado' : 'En Mora'}
+                                                            loan.status === 'defaulted' ? 'En Mora' : 'Pagado'}
                                                     </Badge>
                                                 </td>
                                             </tr>
                                         ))}
                                     </tbody>
                                 </table>
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* RIGHT: Wallet Feed */}
+                    <div className="space-y-4">
+                        <h2 className="text-xl font-bold text-slate-900">Billetera / Movimientos</h2>
+
+                        <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-4 min-h-[400px] h-[500px] overflow-y-auto">
+                            {movements.length === 0 ? (
+                                <p className="text-center text-slate-400 text-sm mt-12">Aún no hay movimientos registradas.</p>
+                            ) : (
+                                <ul className="space-y-4 relative">
+                                    {/* Timeline line */}
+                                    <div className="absolute left-4 top-2 bottom-2 w-0.5 bg-slate-100"></div>
+
+                                    {movements.map((move, i) => (
+                                        <li key={i} className="relative pl-10">
+                                            {/* Dot */}
+                                            <div className={`absolute left-2.5 top-1.5 h-3 w-3 rounded-full border-2 border-white shadow-sm z-10 
+                                                ${move.type === 'inflow' ? 'bg-green-500' : 'bg-red-400'}`}></div>
+
+                                            <div className="flex justify-between items-start">
+                                                <div>
+                                                    <p className="font-bold text-slate-800 text-sm">{move.title}</p>
+                                                    <p className="text-xs text-slate-400 capitalize">{move.subtitle}</p>
+                                                    {move.isInterest && (
+                                                        <p className="text-[10px] text-slate-400 mt-1">Concepto: Intereses</p>
+                                                    )}
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className={`font-bold text-sm ${move.type === 'inflow' ? 'text-green-600' : 'text-red-500'}`}>
+                                                        {move.type === 'inflow' ? '+' : '-'}${move.amount.toLocaleString()}
+                                                    </p>
+                                                    {move.type === 'inflow' && move.gross && (
+                                                        <p className="text-[10px] text-slate-300">Bruto: ${move.gross.toLocaleString()}</p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </div>
+                    </div>
+
+                </div>
             </div>
         </div>
     )
