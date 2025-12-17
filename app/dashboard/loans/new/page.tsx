@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { generatePromissoryNote } from "@/lib/pdf/generator"
 import { numberToSpanish } from "@/lib/utils/numberToWords"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 // Schemas
 const clientSchema = z.object({
@@ -32,6 +33,7 @@ const loanSchema = z.object({
     startDate: z.string(),
     lenderName: z.string().default("LUIS EDUARDO DIAZ"),
     lenderId: z.string().default("1.064.118.387"),
+    investor_id: z.string().optional(), // Added for selecting real investor
 })
 
 function LoanWizardContent() {
@@ -59,6 +61,15 @@ function LoanWizardContent() {
 
     // Data Holders
     const [clientData, setClientData] = useState<any>(null)
+    const [investors, setInvestors] = useState<any[]>([])
+
+    useEffect(() => {
+        async function fetchInvestors() {
+            const { data } = await supabase.from('profiles').select('*').in('role', ['investor', 'admin'])
+            if (data) setInvestors(data)
+        }
+        fetchInvestors()
+    }, [])
 
     // Refs for file inputs
     const noteInputRef = useRef<HTMLInputElement>(null)
@@ -332,7 +343,7 @@ function LoanWizardContent() {
                 </Card>
             )}
 
-            {/* STEP 2: LOAN DATA & PAGARÉ */}
+
             {step === 2 && (
                 <Card>
                     <CardHeader>
@@ -340,16 +351,46 @@ function LoanWizardContent() {
                         <CardDescription>Define el dinero y genera los documentos legales.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">
-                        <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-lg border">
-                            <div>
-                                <label className="text-xs text-slate-500 uppercase font-bold">Acreedor</label>
-                                <Input {...loanForm.register("lenderName")} className="mt-1" />
+
+                        {/* Investor Selection */}
+                        <div className="bg-slate-50 p-4 rounded-lg border space-y-4">
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">Inversionista (Dueña del dinero)</label>
+                                <Select onValueChange={(val) => {
+                                    const selected = investors.find(i => i.id === val)
+                                    if (selected) {
+                                        loanForm.setValue('lenderName', selected.full_name || '')
+                                        // We might not have document ID in profiles, so keep manual edit or fetch from somewhere else if available. 
+                                        // For now, let user edit lenderId manually or keep default.
+                                    }
+                                    loanForm.setValue('investor_id', val) // We need to add this to schema or handle simply
+                                }}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Seleccionar Inversionista..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {investors.map(inv => (
+                                            <SelectItem key={inv.id} value={inv.id}>
+                                                {inv.full_name || inv.email} ({inv.role === 'admin' ? 'Admin' : 'Socia'})
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                             </div>
-                            <div>
-                                <label className="text-xs text-slate-500 uppercase font-bold">C.C. Acreedor</label>
-                                <Input {...loanForm.register("lenderId")} className="mt-1" />
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-xs text-slate-500 uppercase font-bold">Nombre en Pagaré</label>
+                                    <Input {...loanForm.register("lenderName")} className="mt-1" />
+                                </div>
+                                <div>
+                                    <label className="text-xs text-slate-500 uppercase font-bold">C.C. Acreedor</label>
+                                    <Input {...loanForm.register("lenderId")} className="mt-1" />
+                                </div>
                             </div>
                         </div>
+
+                        {/* ... Rest of Step 2 ... */}
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
