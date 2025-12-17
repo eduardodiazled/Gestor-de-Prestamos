@@ -21,6 +21,7 @@ export default function Dashboard() {
         await supabase.auth.signOut()
         window.location.href = '/login'
     }
+    const [profile, setProfile] = useState<any>(null) // Added profile state
     const [stats, setStats] = useState({
         activeCapital: 0,
         totalProfit: 0,
@@ -34,11 +35,24 @@ export default function Dashboard() {
     const [drafts, setDrafts] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
 
-
-
     useEffect(() => {
         async function loadData() {
             setLoading(true)
+
+            // 0. Check User & Role (Redirect if Investor)
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) {
+                window.location.href = '/login'
+                return
+            }
+
+            const { data: profileData } = await supabase.from('profiles').select('*').eq('id', user.id).single()
+
+            if (profileData?.role === 'investor') {
+                window.location.href = '/dashboard/investor' // Redirect Logic
+                return
+            }
+            setProfile(profileData)
 
             // 1. Fetch Loans & Payments
             const [{ data: loans }, { data: payments }] = await Promise.all([
@@ -53,6 +67,7 @@ export default function Dashboard() {
                 return
             }
 
+            // ... (Rest of existing calculation logic remains the same, assuming it functions correctly)
             // A. Calculate Active Capital & Clients (From Loans)
             let cap = 0
             let clients = new Set()
@@ -67,7 +82,6 @@ export default function Dashboard() {
                     clients.add(loan.client_id)
                 }
 
-                // Initialize investor stats
                 // Initialize investor stats
                 const invName = loan.investor?.full_name || 'Unknown'
                 const invId = loan.investor_id
@@ -104,7 +118,6 @@ export default function Dashboard() {
                         totalProfit += investorShare
 
                         // Add to specific investor stats
-                        // We need to find the investor name from the loan list since payment->loan join might not have deep investor profile
                         const loanDef = loans.find(l => l.id === pay.loan_id)
                         const invName = loanDef?.investor?.full_name || 'Unknown'
 
@@ -141,13 +154,17 @@ export default function Dashboard() {
         loadData()
     }, [])
 
-    if (loading) return <div className="p-8 text-center">Cargando datos en tiempo real...</div>
+    if (loading) return <div className="p-8 text-center flex flex-col items-center justify-center h-screen space-y-4">
+        <p>Cargando datos...</p>
+    </div>
 
     return (
         <div className="p-4 space-y-6 max-w-xl mx-auto md:max-w-6xl">
             <header className="mb-4 flex flex-col md:flex-row justify-between items-center gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-slate-900">Dashboard</h1>
+                    <h1 className="text-3xl font-bold tracking-tight text-slate-900">
+                        Hola, {profile?.full_name || 'Admin'} 👋
+                    </h1>
                     <p className="text-slate-500">Gestión en Tiempo Real</p>
                 </div>
                 <div className="flex gap-2 items-center">
