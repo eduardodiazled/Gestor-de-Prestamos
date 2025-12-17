@@ -14,9 +14,13 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { ArrowRight } from "lucide-react"
+import { ArrowRight, LogOut } from "lucide-react"
 
 export default function Dashboard() {
+    const handleLogout = async () => {
+        await supabase.auth.signOut()
+        window.location.href = '/login'
+    }
     const [stats, setStats] = useState({
         activeCapital: 0,
         totalProfit: 0,
@@ -146,13 +150,16 @@ export default function Dashboard() {
                     <h1 className="text-3xl font-bold tracking-tight text-slate-900">Dashboard</h1>
                     <p className="text-slate-500">Gestión en Tiempo Real</p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 items-center">
                     <Button onClick={() => window.location.href = '/dashboard/loans/new'} className="bg-slate-900 text-white hover:bg-slate-800">
                         + Nuevo Préstamo
                     </Button>
                     <Badge variant="secondary" className="text-lg px-4 py-1 border-slate-400">
                         Ganancia Admin: ${stats.adminProfit.toLocaleString()}
                     </Badge>
+                    <Button variant="ghost" size="icon" onClick={handleLogout} title="Cerrar Sesión">
+                        <LogOut className="h-5 w-5 text-slate-500 hover:text-red-600" />
+                    </Button>
                 </div>
             </header>
 
