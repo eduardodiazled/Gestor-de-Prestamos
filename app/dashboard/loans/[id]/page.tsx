@@ -7,7 +7,7 @@ import { format } from "date-fns"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Loader2, FileText, ArrowLeft, Download, Upload, CheckCircle } from "lucide-react"
+import { Loader2, FileText, ArrowLeft, Download, Upload, CheckCircle, Trash2 } from "lucide-react"
 import { generatePazYSalvo } from "@/lib/pdf/generator"
 
 export default function LoanDetailsPage() {
@@ -322,6 +322,37 @@ export default function LoanDetailsPage() {
                     </div>
                 </CardContent>
             </Card>
+
+            {/* DANGER ZONE */}
+            <div className="border border-red-200 rounded-lg p-4 bg-red-50 mt-8">
+                <h3 className="text-red-800 font-bold mb-2">Zona de Peligro</h3>
+                <p className="text-sm text-red-600 mb-4">
+                    Esta acción es irreversible. Se borrará el préstamo, el historial de pagos y se desvincularán los archivos (no se borran de la nube por seguridad).
+                </p>
+                <Button
+                    variant="destructive"
+                    onClick={async () => {
+                        const confirmText = prompt("Escribe 'BORRAR' para confirmar que deseas eliminar este préstamo permanentemente:")
+                        if (confirmText !== 'BORRAR') return
+
+                        setLoading(true)
+                        // 1. Delete linked payments first (to avoid FK error)
+                        await supabase.from('payments').delete().eq('loan_id', loan.id)
+
+                        // 2. Delete loan
+                        const { error } = await supabase.from('loans').delete().eq('id', loan.id)
+                        if (error) {
+                            alert("Error al borrar: " + error.message)
+                            setLoading(false)
+                        } else {
+                            alert("Préstamo eliminado.")
+                            router.push('/dashboard')
+                        }
+                    }}
+                >
+                    <Trash2 className="mr-2 h-4 w-4" /> Eliminar Préstamo
+                </Button>
+            </div>
         </div>
     )
 }
