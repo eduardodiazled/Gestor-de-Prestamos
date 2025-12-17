@@ -186,9 +186,7 @@ export default function InvestorDashboard() {
                         <div className="text-4xl font-bold text-white mb-3">
                             ${stats.availableCash.toLocaleString()}
                         </div>
-                        <Button className="bg-white text-slate-900 hover:bg-slate-100 font-semibold w-full md:w-auto text-xs h-8">
-                            <Wallet className="h-3 w-3 mr-2" /> Registrar Retiro
-                        </Button>
+                        {/* Admin Only Button Removed */}
                         <p className="text-[10px] text-slate-500 mt-2 text-right w-full">Este dinero está en tu poder.</p>
                     </div>
                 </div>
