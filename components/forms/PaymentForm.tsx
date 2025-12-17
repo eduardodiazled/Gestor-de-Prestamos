@@ -32,8 +32,7 @@ export function PaymentForm({ loanId, clientName, suggestedAmount, onSuccess }: 
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [proofFile, setProofFile] = useState<File | null>(null)
 
-    const form = useForm<PaymentFormValues>({
-        // @ts-ignore
+    const form = useForm({
         resolver: zodResolver(formSchema),
         defaultValues: {
             loanId: loanId || "",

@@ -1,6 +1,8 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+export const dynamic = 'force-dynamic'
+
+import { useState, useRef, useEffect, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { supabase } from "@/lib/supabase/client"
 import { useForm } from "react-hook-form"
@@ -32,7 +34,7 @@ const loanSchema = z.object({
     lenderId: z.string().default("1.064.118.387"),
 })
 
-export default function NewLoanWizard() {
+function LoanWizardContent() {
     const router = useRouter()
     const [step, setStep] = useState(1)
     const [loading, setLoading] = useState(false)
@@ -459,5 +461,13 @@ export default function NewLoanWizard() {
                 </Card>
             )}
         </div>
+    )
+}
+
+export default function NewLoanPage() {
+    return (
+        <Suspense fallback={<div className="p-8 text-center"><Loader2 className="animate-spin mx-auto h-8 w-8" /><p>Cargando asistente...</p></div>}>
+            <LoanWizardContent />
+        </Suspense>
     )
 }

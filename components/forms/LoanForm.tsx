@@ -14,16 +14,14 @@ const formSchema = z.object({
     adminFeePercent: z.coerce.number().min(0).max(100).default(40),
     startDate: z.string(),
     cutoffDay: z.coerce.number().min(1).max(31),
-    promissoryNote: z.string().optional(), // File inputs are tricky in form schema, handling separately or via custom validation usually.
+    promissoryNote: z.string().optional(),
+    promissoryNoteFile: z.any().optional(), // File input handle
 })
 
-// Extended interface for the file input
-interface LoanFormValues extends z.infer<typeof formSchema> {
-    promissoryNoteFile?: FileList
-}
+type LoanFormValues = z.infer<typeof formSchema>
 
 export function LoanForm() {
-    const form = useForm<LoanFormValues>({
+    const form = useForm({
         resolver: zodResolver(formSchema),
         defaultValues: {
             clientName: "",
