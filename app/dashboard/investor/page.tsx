@@ -172,13 +172,14 @@ export default function InvestorDashboard() {
         <div className="min-h-screen bg-slate-50 font-sans text-slate-900 pb-12">
 
             {/* 1. DARK HEADER */}
-            <header className="bg-slate-900 text-white pt-8 pb-20 px-4 md:px-8 shadow-lg">
+            {/* 1. DARK HEADER */}
+            <header className="bg-slate-950 text-white pt-8 pb-20 px-4 md:px-8 shadow-lg border-b border-white/10">
                 <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                     <div>
-                        <div className="flex items-center gap-2 text-slate-400 mb-1 text-sm font-medium uppercase tracking-wider">
-                            <Users className="h-4 w-4" /> Portal de Socia
+                        <div className="flex items-center gap-2 text-emerald-400 mb-1 text-sm font-bold uppercase tracking-wider">
+                            <Users className="h-4 w-4" /> ZALDO | Socio
                         </div>
-                        <h1 className="text-4xl font-bold tracking-tight mb-2">{profile?.full_name || 'Inversionista'}</h1>
+                        <h1 className="text-4xl font-extrabold tracking-tight mb-2 text-white">{profile?.full_name || 'Inversionista'}</h1>
                         <Button
                             variant="link"
                             onClick={handleLogout}
@@ -188,9 +189,9 @@ export default function InvestorDashboard() {
                         </Button>
                     </div>
 
-                    <div className="bg-slate-800/50 backdrop-blur-sm p-4 rounded-xl border border-slate-700/50 flex flex-col md:items-end min-w-[280px]">
+                    <div className="bg-slate-900/50 backdrop-blur-sm p-4 rounded-xl border border-white/10 flex flex-col md:items-end min-w-[280px]">
                         <p className="text-xs text-slate-400 font-medium uppercase tracking-wider mb-1">Caja Disponible (Retornado + Ganancia)</p>
-                        <div className="text-4xl font-bold text-white mb-3">
+                        <div className="text-4xl font-bold text-emerald-400 mb-3">
                             ${stats.availableCash.toLocaleString()}
                         </div>
                         {/* Admin Only Button Removed */}

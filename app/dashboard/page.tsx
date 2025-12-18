@@ -14,7 +14,8 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { ArrowRight, LogOut } from "lucide-react"
+
+import { ArrowRight, LogOut, Users } from "lucide-react"
 import { useRouter } from "next/navigation"
 
 export default function Dashboard() {
@@ -167,22 +168,25 @@ export default function Dashboard() {
 
     return (
         <div className="p-4 space-y-6 max-w-xl mx-auto md:max-w-6xl">
-            <header className="mb-4 flex flex-col md:flex-row justify-between items-center gap-4">
+            <header className="mb-8 flex flex-col md:flex-row justify-between items-center gap-4 bg-slate-900 text-white p-6 rounded-xl shadow-lg border border-slate-800">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-slate-900">
+                    <div className="flex items-center gap-2 text-emerald-400 mb-1 text-sm font-bold uppercase tracking-wider">
+                        <Users className="h-4 w-4" /> ZALDO | Admin
+                    </div>
+                    <h1 className="text-3xl font-extrabold tracking-tight">
                         Hola, {profile?.full_name || 'Admin'} 👋
                     </h1>
-                    <p className="text-slate-500">Gestión en Tiempo Real</p>
+                    <p className="text-slate-400">Gestión Fintech en Tiempo Real</p>
                 </div>
                 <div className="flex gap-2 items-center">
-                    <Button onClick={() => window.location.href = '/dashboard/loans/new'} className="bg-slate-900 text-white hover:bg-slate-800">
+                    <Button onClick={() => window.location.href = '/dashboard/loans/new'} className="bg-emerald-500 text-white hover:bg-emerald-600 font-bold border-0">
                         + Nuevo Préstamo
                     </Button>
-                    <Badge variant="secondary" className="text-lg px-4 py-1 border-slate-400">
+                    <Badge variant="secondary" className="text-lg px-4 py-1 border-slate-700 bg-slate-800 text-slate-300">
                         Ganancia Admin: ${stats.adminProfit.toLocaleString()}
                     </Badge>
-                    <Button variant="ghost" size="icon" onClick={handleLogout} title="Cerrar Sesión">
-                        <LogOut className="h-5 w-5 text-slate-500 hover:text-red-600" />
+                    <Button variant="ghost" size="icon" onClick={handleLogout} title="Cerrar Sesión" className="hover:bg-slate-800 text-slate-400">
+                        <LogOut className="h-5 w-5" />
                     </Button>
                 </div>
             </header>
