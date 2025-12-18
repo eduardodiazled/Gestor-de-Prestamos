@@ -121,9 +121,9 @@ export default function LoanReportPage() {
                 {/* HEADER */}
                 <header className="border-b-2 border-slate-900 pb-6 mb-8 flex justify-between items-end">
                     <div>
-                        <div className="flex items-center gap-2 mb-2">
-                            <div className="bg-slate-900 text-white font-bold px-2 py-1 rounded text-sm">Z</div>
-                            <span className="font-bold text-slate-900 tracking-wider">ZALDO</span>
+                        <div className="mb-2">
+                            <h2 className="text-3xl font-bold text-slate-900 tracking-tight leading-none mb-1">ZALDO</h2>
+                            <p className="text-sm text-slate-500 font-medium">Soluciones Fintech</p>
                         </div>
                         <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 uppercase">Estado de Cuenta</h1>
                         <p className="text-slate-500 mt-1 text-sm font-medium">Reporte generado el {format(new Date(), 'dd MMMM yyyy', { locale: es })}</p>

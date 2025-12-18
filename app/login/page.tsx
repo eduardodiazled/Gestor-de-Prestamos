@@ -47,8 +47,8 @@ export default function LoginPage() {
             <Card className="w-full max-w-md border-0 shadow-xl bg-white">
                 <CardHeader className="space-y-1 pb-8">
                     <div className="flex justify-center mb-4">
-                        <div className="h-12 w-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                            <TrendingUp className="h-6 w-6 text-blue-600" />
+                        <div className="h-16 w-16 bg-slate-900 rounded-2xl flex items-center justify-center shadow-lg">
+                            <span className="text-white text-4xl font-extrabold tracking-tighter">Z</span>
                         </div>
                     </div>
                     <CardTitle className="text-2xl font-bold text-center text-slate-900">Bienvenido de nuevo</CardTitle>
