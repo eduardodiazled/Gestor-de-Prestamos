@@ -170,13 +170,10 @@ export default function Dashboard() {
         <div className="p-4 space-y-6 max-w-xl mx-auto md:max-w-6xl">
             <header className="mb-8 flex flex-col md:flex-row justify-between items-center gap-4 bg-slate-900 text-white p-6 rounded-xl shadow-lg border border-slate-800">
                 <div>
-                    <div className="flex items-center gap-2 mb-1">
-                        <div className="h-8 w-8 bg-slate-900 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-sm">Z</div>
-                        <div className="text-emerald-500 text-sm font-bold uppercase tracking-wider">
-                            ZALDO | Admin
-                        </div>
+                    <div className="flex items-center gap-2 text-emerald-400 mb-1 text-sm font-bold uppercase tracking-wider">
+                        <Users className="h-4 w-4" /> ZALDO | Admin
                     </div>
-                    <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">
+                    <h1 className="text-3xl font-extrabold tracking-tight text-white">
                         Hola, {profile?.full_name || 'CEO Luis Eduardo Diaz'} 👋
                     </h1>
                     <p className="text-slate-400">Gestión Fintech en Tiempo Real</p>

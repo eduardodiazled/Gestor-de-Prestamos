@@ -176,11 +176,8 @@ export default function InvestorDashboard() {
             <header className="bg-slate-950 text-white pt-8 pb-20 px-4 md:px-8 shadow-lg border-b border-white/10">
                 <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                     <div>
-                        <div className="flex items-center gap-3 mb-2">
-                            <div className="h-10 w-10 bg-emerald-500 rounded-xl flex items-center justify-center text-white font-bold text-2xl shadow-lg shadow-emerald-500/20">Z</div>
-                            <div className="text-emerald-400 text-sm font-bold uppercase tracking-wider">
-                                ZALDO | Socio
-                            </div>
+                        <div className="flex items-center gap-2 text-emerald-400 mb-1 text-sm font-bold uppercase tracking-wider">
+                            <Users className="h-4 w-4" /> ZALDO | Socio
                         </div>
                         <h1 className="text-4xl font-extrabold tracking-tight mb-2 text-white">{profile?.full_name || 'Inversionista'}</h1>
                         <Button
