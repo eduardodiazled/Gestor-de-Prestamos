@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Loader2, TrendingUp, ShieldCheck } from "lucide-react"
+import Image from "next/image"
 
 export default function LoginPage() {
     const router = useRouter()
@@ -45,10 +46,17 @@ export default function LoginPage() {
     return (
         <div className="flex min-h-screen w-full items-center justify-center bg-white px-4">
             <Card className="w-full max-w-md border-0 shadow-xl bg-white">
+
                 <CardHeader className="space-y-1 pb-8">
-                    <div className="flex justify-center mb-4">
-                        <div className="h-16 w-16 bg-slate-900 rounded-2xl flex items-center justify-center shadow-lg">
-                            <span className="text-white text-4xl font-extrabold tracking-tighter">Z</span>
+                    <div className="flex justify-center mb-6">
+                        <div className="relative h-24 w-24">
+                            <Image
+                                src="/logo.png"
+                                alt="ZALDO Logo"
+                                fill
+                                className="object-contain"
+                                priority
+                            />
                         </div>
                     </div>
                     <CardTitle className="text-2xl font-bold text-center text-slate-900">Bienvenido de nuevo</CardTitle>

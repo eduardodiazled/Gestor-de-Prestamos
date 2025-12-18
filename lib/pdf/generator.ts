@@ -11,23 +11,50 @@ interface ReceiptData {
     investorName?: string;
 }
 
-export const generatePaymentReceipt = (data: ReceiptData) => {
+const loadImage = (url: string): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = "Anonymous";
+        img.src = url;
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) { reject('No context'); return; }
+            ctx.drawImage(img, 0, 0);
+            resolve(canvas.toDataURL('image/png'));
+        };
+        img.onerror = reject;
+    });
+};
+
+export const generatePaymentReceipt = async (data: ReceiptData) => { // Changed to async
     const doc = new jsPDF();
 
     // Config
     const margin = 20;
     let y = 30;
 
-    // Header - ZALDO Branding
+    // Header - Logo & Branding
+    try {
+        const logoData = await loadImage('/logo.png');
+        doc.addImage(logoData, 'PNG', margin, y - 5, 12, 12); // Square Logo 12x12
+    } catch (e) {
+        console.error("Error loading logo", e);
+    }
+
+    // Text Next to Logo
     doc.setFontSize(22);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(0, 0, 0);
-    doc.text("ZALDO", margin, y);
-    y += 6;
+    doc.text("ZALDO", margin + 15, y + 4);
+
+    y += 10;
     doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(100, 100, 100);
-    doc.text("Soluciones Fintech", margin, y);
+    doc.text("Soluciones Fintech", margin + 15, y);
 
     y += 20;
 
@@ -89,7 +116,7 @@ export const generatePaymentReceipt = (data: ReceiptData) => {
     doc.save(`Recibo_${data.clientName}_${data.date}.pdf`);
 };
 
-export const generatePromissoryNote = (data: {
+export const generatePromissoryNote = async (data: { // Changed to async
     number: string,
     amount: number,
     amountText: string,
@@ -109,13 +136,19 @@ export const generatePromissoryNote = (data: {
     let y = 30;
 
     // Title & Branding
+    try {
+        const logoData = await loadImage('/logo.png');
+        doc.addImage(logoData, 'PNG', margin, y - 5, 12, 12);
+    } catch (e) { console.error(e) }
+
     doc.setFontSize(22);
     doc.setFont("helvetica", "bold");
-    doc.text("ZALDO", margin, y);
-    y += 6;
+    doc.text("ZALDO", margin + 15, y + 4);
+
+    y += 10;
     doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
-    doc.text("Soluciones Fintech", margin, y);
+    doc.text("Soluciones Fintech", margin + 15, y);
 
     y += 20;
 
@@ -191,9 +224,9 @@ export const generatePromissoryNote = (data: {
 
     // Save
     doc.save(`Pagare_${data.clientName}.pdf`);
-}
+};
 
-export const generatePazYSalvo = (data: {
+export const generatePazYSalvo = async (data: { // Changed to async
     clientName: string,
     clientId: string,
     loanAmount: number,
@@ -206,15 +239,20 @@ export const generatePazYSalvo = (data: {
     let y = 40;
 
     // Logo / Header Placeholders if any
+    try {
+        const logoData = await loadImage('/logo.png');
+        doc.addImage(logoData, 'PNG', margin, y - 5, 12, 12);
+    } catch (e) { console.error(e) }
 
     // Title & Branding
     doc.setFontSize(22);
     doc.setFont("helvetica", "bold");
-    doc.text("ZALDO", margin, y);
-    y += 6;
+    doc.text("ZALDO", margin + 15, y + 4);
+
+    y += 10;
     doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
-    doc.text("Soluciones Fintech", margin, y);
+    doc.text("Soluciones Fintech", margin + 15, y);
 
     y += 15;
 

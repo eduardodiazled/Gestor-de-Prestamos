@@ -7,6 +7,7 @@ import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import { Loader2, Printer, TrendingUp, AlertCircle, CheckCircle2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import Image from "next/image"
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import writtenNumber from 'written-number'
 
@@ -121,11 +122,16 @@ export default function LoanReportPage() {
                 {/* HEADER */}
                 <header className="border-b-2 border-slate-900 pb-6 mb-8 flex justify-between items-end">
                     <div>
-                        <div className="mb-2">
-                            <h2 className="text-3xl font-bold text-slate-900 tracking-tight leading-none mb-1">ZALDO</h2>
-                            <p className="text-sm text-slate-500 font-medium">Soluciones Fintech</p>
+                        <div className="mb-2 flex items-center gap-4">
+                            <div className="relative h-16 w-16">
+                                <Image src="/logo.png" alt="ZALDO" fill className="object-contain" />
+                            </div>
+                            <div>
+                                <h2 className="text-3xl font-bold text-slate-900 tracking-tight leading-none mb-1">ZALDO</h2>
+                                <p className="text-sm text-slate-500 font-medium">Soluciones Fintech</p>
+                            </div>
                         </div>
-                        <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 uppercase">Estado de Cuenta</h1>
+                        <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 uppercase mt-4">Estado de Cuenta</h1>
                         <p className="text-slate-500 mt-1 text-sm font-medium">Reporte generado el {format(new Date(), 'dd MMMM yyyy', { locale: es })}</p>
                     </div>
                     <div className="text-right">
