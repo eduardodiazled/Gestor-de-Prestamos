@@ -18,8 +18,19 @@ export const generatePaymentReceipt = (data: ReceiptData) => {
     const margin = 20;
     let y = 30;
 
-    // Header
+    // Header - ZALDO Branding
     doc.setFontSize(22);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(0, 0, 0);
+    doc.text("ZALDO", margin, y);
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(100, 100, 100);
+    doc.text("Soluciones Fintech", margin + 40, y);
+
+    y += 20;
+
+    doc.setFontSize(18);
     doc.setTextColor(40, 40, 40);
     doc.text("COMPROBANTE DE PAGO", margin, y);
     y += 10;
@@ -96,8 +107,19 @@ export const generatePromissoryNote = (data: {
     const margin = 20;
     let y = 30;
 
+    // Title & Branding
+    doc.setFontSize(22);
+    doc.setFont("helvetica", "bold");
+    doc.text("ZALDO", margin, y);
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.text("Soluciones Fintech", margin + 50, y);
+
+    y += 20;
+
     // Title
     doc.setFontSize(12);
+    doc.setFont("helvetica", "bold");
     doc.text(`Pagaré Número: ${data.number}`, margin, y);
     y += 15;
 
@@ -183,8 +205,17 @@ export const generatePazYSalvo = (data: {
 
     // Logo / Header Placeholders if any
 
-    // Title
+    // Title & Branding
     doc.setFontSize(22);
+    doc.setFont("helvetica", "bold");
+    doc.text("ZALDO", margin, y);
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.text("Soluciones Fintech", margin + 50, y);
+
+    y += 15;
+
+    doc.setFontSize(18);
     doc.setFont("helvetica", "bold");
     doc.text("PAZ Y SALVO", 105, y, { align: "center" });
     y += 10;
@@ -197,7 +228,7 @@ export const generatePazYSalvo = (data: {
     doc.setFont("helvetica", "normal");
 
     // Text
-    const bodyText = `Por medio del presente documento, CERTIFICAMOS que el/la señor(a) ${data.clientName}, identificado(a) con Cédula de Ciudadanía No. ${data.clientId}, ha cancelado en su totalidad las obligaciones financieras adquiridas mediante el crédito por valor de $${data.loanAmount.toLocaleString()} iniciado el día ${data.startDate}.`;
+    const bodyText = `Por medio del presente documento, ZALDO CERTIFICA que el/la señor(a) ${data.clientName}, identificado(a) con Cédula de Ciudadanía No. ${data.clientId}, ha cancelado en su totalidad las obligaciones financieras adquiridas mediante el crédito por valor de $${data.loanAmount.toLocaleString()} iniciado el día ${data.startDate}.`;
 
     const splitBody = doc.splitTextToSize(bodyText, 170);
     doc.text(splitBody, margin, y);
@@ -215,10 +246,10 @@ export const generatePazYSalvo = (data: {
 
     doc.line(margin, y, margin + 80, y);
     doc.setFont("helvetica", "bold");
-    doc.text("ADMINISTRACIÓN", margin, y + 8);
+    doc.text("CEO Luis Eduardo Diaz", margin, y + 8);
     doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
-    doc.text("Thermal Gravity SaaS", margin, y + 14);
+    doc.text("Gerente General - ZALDO", margin, y + 14);
 
     // Save
     doc.save(`PazYSalvo_${data.clientName}.pdf`);

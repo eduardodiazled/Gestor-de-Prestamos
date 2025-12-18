@@ -121,6 +121,10 @@ export default function LoanReportPage() {
                 {/* HEADER */}
                 <header className="border-b-2 border-slate-900 pb-6 mb-8 flex justify-between items-end">
                     <div>
+                        <div className="flex items-center gap-2 mb-2">
+                            <div className="bg-slate-900 text-white font-bold px-2 py-1 rounded text-sm">Z</div>
+                            <span className="font-bold text-slate-900 tracking-wider">ZALDO</span>
+                        </div>
                         <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 uppercase">Estado de Cuenta</h1>
                         <p className="text-slate-500 mt-1 text-sm font-medium">Reporte generado el {format(new Date(), 'dd MMMM yyyy', { locale: es })}</p>
                     </div>
@@ -152,7 +156,7 @@ export default function LoanReportPage() {
                             {loan.status === 'active' && <CheckCircle2 className="h-6 w-6 text-blue-600" />}
                             {loan.status === 'defaulted' && <AlertCircle className="h-6 w-6 text-red-600" />}
                             <div className={`text-2xl font-bold ${loan.status === 'active' ? 'text-blue-600' :
-                                    loan.status === 'defaulted' ? 'text-red-600' : 'text-slate-900'
+                                loan.status === 'defaulted' ? 'text-red-600' : 'text-slate-900'
                                 }`}>
                                 {loan.status === 'active' ? 'Al Día' :
                                     loan.status === 'defaulted' ? 'En Mora' : 'Finalizado'}
