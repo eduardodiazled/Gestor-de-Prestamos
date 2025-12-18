@@ -174,7 +174,7 @@ export default function Dashboard() {
                         <Users className="h-4 w-4" /> ZALDO | Admin
                     </div>
                     <h1 className="text-3xl font-extrabold tracking-tight">
-                        Hola, {profile?.full_name || 'Admin'} 👋
+                        Hola, {profile?.full_name || 'CEO Luis Eduardo Diaz'} 👋
                     </h1>
                     <p className="text-slate-400">Gestión Fintech en Tiempo Real</p>
                 </div>
