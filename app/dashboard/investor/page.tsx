@@ -5,9 +5,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { supabase } from "@/lib/supabase/client"
-import { Loader2, LogOut, TrendingUp, Wallet, Users, ArrowUpRight, ArrowDownLeft, Info, DollarSign } from "lucide-react"
+import { Loader2, LogOut, TrendingUp, Wallet, Users, ArrowUpRight, ArrowDownLeft, Info, DollarSign, FileText } from "lucide-react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog"
 
 export default function InvestorDashboard() {
     const [loading, setLoading] = useState(true)
@@ -23,6 +29,7 @@ export default function InvestorDashboard() {
     })
     const [loans, setLoans] = useState<any[]>([])
     const [movements, setMovements] = useState<any[]>([])
+    const [selectedLoan, setSelectedLoan] = useState<any>(null)
 
     useEffect(() => {
         async function loadInvestorData() {
@@ -297,12 +304,17 @@ export default function InvestorDashboard() {
                                     </thead>
                                     <tbody className="divide-y divide-slate-50">
                                         {loans.map(loan => (
-                                            <tr key={loan.id} className="hover:bg-slate-50/80 transition-colors group">
+                                            <tr key={loan.id} className="hover:bg-slate-50/80 transition-colors group cursor-pointer" onClick={() => setSelectedLoan(loan)}>
                                                 <td className="p-4 pl-6 font-medium text-slate-700 flex items-center gap-3">
                                                     <div className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
                                                         <Users className="h-4 w-4" />
                                                     </div>
-                                                    {loan.client?.full_name || 'Desconocido'}
+                                                    <div>
+                                                        <div className="group-hover:text-blue-600 underline-offset-4 group-hover:underline transition-all">
+                                                            {loan.client?.full_name || 'Desconocido'}
+                                                        </div>
+                                                        <div className="text-[10px] text-slate-400 font-normal">Click para ver documentos</div>
+                                                    </div>
                                                 </td>
                                                 <td className="p-4 text-slate-500">
                                                     {format(new Date(loan.start_date), 'dd/MM/yyyy')}
@@ -371,6 +383,68 @@ export default function InvestorDashboard() {
 
                 </div>
             </div>
+
+            {/* Document Details Modal */}
+            <Dialog open={!!selectedLoan} onOpenChange={(open) => !open && setSelectedLoan(null)}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Documentación del Préstamo</DialogTitle>
+                    </DialogHeader>
+                    {selectedLoan && (
+                        <div className="space-y-6">
+                            <div className="bg-slate-50 p-4 rounded-lg">
+                                <p className="text-sm font-medium text-slate-500">Cliente</p>
+                                <p className="font-bold text-lg">{selectedLoan.client?.full_name}</p>
+                                <p className="text-xs text-slate-400">CC: {selectedLoan.client?.document_id || 'No registrada'}</p>
+                            </div>
+
+                            <div className="space-y-3">
+                                <h4 className="text-sm font-semibold text-slate-900 border-b pb-2">Archivos Disponibles</h4>
+
+                                {selectedLoan.promissory_note_url ? (
+                                    <a href={selectedLoan.promissory_note_url} target="_blank" rel="noopener noreferrer"
+                                        className="flex items-center gap-3 p-3 border rounded-lg hover:bg-slate-50 transition-colors group">
+                                        <div className="h-10 w-10 bg-red-100 text-red-600 rounded-lg flex items-center justify-center">
+                                            <FileText className="h-5 w-5" />
+                                        </div>
+                                        <div className="flex-1">
+                                            <p className="font-medium text-sm group-hover:text-blue-600">Pagaré Firmado</p>
+                                            <p className="text-xs text-slate-400">PDF Original</p>
+                                        </div>
+                                        <ArrowUpRight className="h-4 w-4 text-slate-300 group-hover:text-blue-600" />
+                                    </a>
+                                ) : (
+                                    <div className="p-3 border rounded-lg border-dashed text-slate-400 text-sm text-center">
+                                        Pagaré no digitalizado
+                                    </div>
+                                )}
+
+                                {selectedLoan.transfer_proof_url ? (
+                                    <a href={selectedLoan.transfer_proof_url} target="_blank" rel="noopener noreferrer"
+                                        className="flex items-center gap-3 p-3 border rounded-lg hover:bg-slate-50 transition-colors group">
+                                        <div className="h-10 w-10 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center">
+                                            <FileText className="h-5 w-5" />
+                                        </div>
+                                        <div className="flex-1">
+                                            <p className="font-medium text-sm group-hover:text-blue-600">Comprobante Desembolso</p>
+                                            <p className="text-xs text-slate-400">Imagen / PDF</p>
+                                        </div>
+                                        <ArrowUpRight className="h-4 w-4 text-slate-300 group-hover:text-blue-600" />
+                                    </a>
+                                ) : (
+                                    <div className="p-3 border rounded-lg border-dashed text-slate-400 text-sm text-center">
+                                        Comprobante no adjunto
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="pt-2">
+                                <Button className="w-full" onClick={() => setSelectedLoan(null)}>Cerrar</Button>
+                            </div>
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }

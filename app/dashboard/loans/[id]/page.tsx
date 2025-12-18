@@ -7,7 +7,7 @@ import { format } from "date-fns"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Loader2, FileText, ArrowLeft, Download, Upload, CheckCircle, Trash2 } from "lucide-react"
+import { Loader2, FileText, ArrowLeft, Download, Upload, CheckCircle, Trash2, Printer } from "lucide-react"
 import { generatePazYSalvo } from "@/lib/pdf/generator"
 
 export default function LoanDetailsPage() {
@@ -260,6 +260,11 @@ export default function LoanDetailsPage() {
                     <CardTitle>Historial de Pagos</CardTitle>
                 </CardHeader>
                 <CardContent>
+                    <div className="flex justify-end gap-2 mb-4">
+                        <Button variant="outline" onClick={() => window.open(`/dashboard/loans/${loan.id}/report`, '_blank')}>
+                            <Printer className="mr-2 h-4 w-4" /> Generar Reporte
+                        </Button>
+                    </div>
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm text-left">
                             <thead className="bg-slate-50 text-slate-500">
