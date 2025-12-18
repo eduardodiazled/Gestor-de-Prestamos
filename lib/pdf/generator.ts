@@ -23,10 +23,11 @@ export const generatePaymentReceipt = (data: ReceiptData) => {
     doc.setFont("helvetica", "bold");
     doc.setTextColor(0, 0, 0);
     doc.text("ZALDO", margin, y);
+    y += 6;
     doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(100, 100, 100);
-    doc.text("Soluciones Fintech", margin + 40, y);
+    doc.text("Soluciones Fintech", margin, y);
 
     y += 20;
 
@@ -111,9 +112,10 @@ export const generatePromissoryNote = (data: {
     doc.setFontSize(22);
     doc.setFont("helvetica", "bold");
     doc.text("ZALDO", margin, y);
+    y += 6;
     doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
-    doc.text("Soluciones Fintech", margin + 50, y);
+    doc.text("Soluciones Fintech", margin, y);
 
     y += 20;
 
@@ -209,9 +211,10 @@ export const generatePazYSalvo = (data: {
     doc.setFontSize(22);
     doc.setFont("helvetica", "bold");
     doc.text("ZALDO", margin, y);
+    y += 6;
     doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
-    doc.text("Soluciones Fintech", margin + 50, y);
+    doc.text("Soluciones Fintech", margin, y);
 
     y += 15;
 
