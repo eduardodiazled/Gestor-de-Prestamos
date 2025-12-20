@@ -103,12 +103,12 @@ function LoanWizardContent() {
                 const { data, error } = await supabase.from('clients').select('*').eq('id', prefillClientId).single()
                 if (data) {
                     clientForm.reset({
-                        fullName: data.full_name,
-                        documentId: data.document_id,
-                        phone: data.phone,
-                        address: data.address,
-                        city: "La Jagua de Ibirico", // Default or fetch if stored
-                        email: data.email
+                        fullName: data.full_name || "",
+                        documentId: data.document_id || "",
+                        phone: data.phone || "",
+                        address: data.address || "",
+                        city: data.city || "La Jagua de Ibirico",
+                        email: data.email || ""
                     })
                     // We don't verify image availability here easily without listing storage, but assuming they might need to re-upload ID or we assume it's "on file".
                     // For simplicity, we let valid form pass but Step 1 might require file.
