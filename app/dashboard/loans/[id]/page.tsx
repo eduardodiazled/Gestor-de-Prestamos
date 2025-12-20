@@ -7,7 +7,7 @@ import { format } from "date-fns"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Loader2, FileText, ArrowLeft, Download, Upload, CheckCircle, Trash2, Printer } from "lucide-react"
+import { Loader2, FileText, ArrowLeft, Download, Upload, CheckCircle, Trash2, Printer, TrendingUp } from "lucide-react"
 import { generatePazYSalvo } from "@/lib/pdf/generator"
 
 export default function LoanDetailsPage() {
@@ -158,19 +158,25 @@ export default function LoanDetailsPage() {
 
                         {/* Paz y Salvo Button */}
                         {(loan.status === 'paid' || loan.status === 'completed') && (
-                            <div className="pt-4">
+                            <div className="pt-4 flex gap-2">
                                 <Button
-                                    className="w-full bg-green-600 hover:bg-green-700 text-white"
+                                    className="flex-1 bg-green-600 hover:bg-green-700 text-white"
                                     onClick={() => generatePazYSalvo({
                                         clientName: loan.client?.full_name || '',
                                         clientId: loan.client?.document_id || '',
                                         loanAmount: Number(loan.amount),
                                         startDate: format(new Date(loan.start_date), 'dd/MM/yyyy'),
-                                        endDate: format(new Date(), 'dd/MM/yyyy'), // Today as issuance date
-                                        city: loan.client?.address?.split(',')?.[1] || 'La Jagua de Ibirico' // Fallback logic
+                                        endDate: format(new Date(), 'dd/MM/yyyy'),
+                                        city: loan.client?.address?.split(',')?.[1] || 'La Jagua de Ibirico'
                                     })}
                                 >
                                     <CheckCircle className="mr-2 h-4 w-4" /> Generar Paz y Salvo
+                                </Button>
+                                <Button
+                                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                                    onClick={() => router.push(`/dashboard/loans/new?clientId=${loan.client_id}`)}
+                                >
+                                    <TrendingUp className="mr-2 h-4 w-4" /> Prestar de Nuevo
                                 </Button>
                             </div>
                         )}

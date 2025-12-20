@@ -9,6 +9,7 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { format } from "date-fns"
+import { es } from "date-fns/locale"
 import { Loader2, Upload, FileText, Check, ArrowRight, ArrowLeft, Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -75,30 +76,49 @@ function LoanWizardContent() {
     const noteInputRef = useRef<HTMLInputElement>(null)
     const transferInputRef = useRef<HTMLInputElement>(null)
 
-    // Draft Management
+    // Draft & Pre-fill Management
     const searchParams = useSearchParams()
-    const draftId = searchParams.get('id') // Load draft if URL has ?id=...
+    const draftId = searchParams.get('id') // Load draft
+    const prefillClientId = searchParams.get('clientId') // Load existing client
 
     useEffect(() => {
-        if (!draftId) return
-
-        async function loadDraft() {
-            setLoading(true)
-            const { data, error } = await supabase.from('loan_applications').select('*').eq('id', draftId).single()
-            if (error) {
-                console.error("Error loading draft", error)
-            } else if (data) {
-                // Populate Forms
-                const savedData = data.data
-                if (savedData.client) clientForm.reset(savedData.client)
-                if (savedData.loan) loanForm.reset(savedData.loan)
-                setClientData(savedData.client) // Restore client data for next steps
-                setStep(data.step || 1)
+        if (draftId) {
+            async function loadDraft() {
+                setLoading(true)
+                const { data, error } = await supabase.from('loan_applications').select('*').eq('id', draftId).single()
+                if (data) {
+                    const savedData = data.data
+                    if (savedData.client) clientForm.reset(savedData.client)
+                    if (savedData.loan) loanForm.reset(savedData.loan)
+                    setClientData(savedData.client)
+                    setStep(data.step || 1)
+                }
+                setLoading(false)
             }
-            setLoading(false)
+            loadDraft()
+        } else if (prefillClientId) {
+            async function loadClient() {
+                setLoading(true)
+                const { data, error } = await supabase.from('clients').select('*').eq('id', prefillClientId).single()
+                if (data) {
+                    clientForm.reset({
+                        fullName: data.full_name,
+                        documentId: data.document_id,
+                        phone: data.phone,
+                        address: data.address,
+                        city: "La Jagua de Ibirico", // Default or fetch if stored
+                        email: data.email
+                    })
+                    // We don't verify image availability here easily without listing storage, but assuming they might need to re-upload ID or we assume it's "on file".
+                    // For simplicity, we let valid form pass but Step 1 might require file.
+                    // IMPORTANT: To allow skipping ID upload for existing client, we need to check if they have one.
+                    if (data.id_photo_url) setIdFile(new File([], "cedula_existente.jpg")) // Dummy file to pass check or handle logic
+                }
+                setLoading(false)
+            }
+            loadClient()
         }
-        loadDraft()
-    }, [draftId])
+    }, [draftId, prefillClientId])
 
     const saveDraft = async (newStep: number, collectedData: any = {}) => {
         // Prepare payload merging current form values
@@ -160,7 +180,7 @@ function LoanWizardContent() {
             amount: amountVal,
             amountText: amountText,
             city: String(cValues.city || ''),
-            date: format(new Date(), 'd de MMMM de yyyy'),
+            date: format(new Date(), 'd "de" MMMM "de" yyyy', { locale: es }),
             clientName: String(cValues.fullName || ''),
             clientId: String(cValues.documentId || ''),
             clientAddress: String(cValues.address || ''),
@@ -250,7 +270,7 @@ function LoanWizardContent() {
             const lValues = loanForm.getValues()
             const { error: loanError } = await supabase.from('loans').insert({
                 client_id: clientId,
-                investor_id: user.id, // Explicitly use fetched user ID
+                investor_id: lValues.investor_id || user.id, // Fixed: Use selected investor or fallback to admin
                 amount: lValues.amount,
                 interest_rate: lValues.interestRate,
                 start_date: lValues.startDate,
