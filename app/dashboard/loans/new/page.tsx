@@ -57,6 +57,7 @@ function LoanWizardContent() {
 
     // Files
     const [idFile, setIdFile] = useState<File | null>(null)
+    const [hasExistingId, setHasExistingId] = useState(false) // New state for tracking existing ID
     const [signedNoteFile, setSignedNoteFile] = useState<File | null>(null)
     const [transferFile, setTransferFile] = useState<File | null>(null)
 
@@ -112,7 +113,9 @@ function LoanWizardContent() {
                     // We don't verify image availability here easily without listing storage, but assuming they might need to re-upload ID or we assume it's "on file".
                     // For simplicity, we let valid form pass but Step 1 might require file.
                     // IMPORTANT: To allow skipping ID upload for existing client, we need to check if they have one.
-                    if (data.id_photo_url) setIdFile(new File([], "cedula_existente.jpg")) // Dummy file to pass check or handle logic
+                    if (data.id_photo_url) {
+                        setHasExistingId(true)
+                    }
                 }
                 setLoading(false)
             }
@@ -156,10 +159,11 @@ function LoanWizardContent() {
     // --- STEP ACTIONS ---
 
     const handleStep1 = async (data: any) => {
-        if (!idFile && !draftId) { // Allow skipping file upload if reloading draft? No, file inputs clear on reload. 
+        // Validation: Must have file OR draft ID OR existing ID on server
+        if (!idFile && !draftId && !hasExistingId) {
             // Better to force re-upload or check if we stored file metadata. For now, force re-upload if logic strict, or lenient.
             // Assumption: Files are ephemeral. Re-upload needed.
-            alert("Debes subir la foto de la Cédula (Si es borrador, súbela de nuevo)")
+            alert("Debes subir la foto de la Cédula (Si es borrador o cliente nuevo sin foto, súbela)")
             return
         }
         setClientData(data)
@@ -245,14 +249,30 @@ function LoanWizardContent() {
                 clientId = newClient.id
             }
 
+            // Update client data if changed (e.g. phone/address updated in wizard)
+            if (existingClient) {
+                await supabase.from('clients').update({
+                    email: clientData.email,
+                    phone: clientData.phone,
+                    address: clientData.address,
+                    city: clientData.city
+                }).eq('id', clientId)
+            }
+
             // 3. Upload Files
             const timestamp = Date.now()
 
             // ID
-            const idExt = idFile?.name.split('.').pop()
-            const idPath = `clients/${clientId}_id_${timestamp}.${idExt}`
-            await supabase.storage.from('documents').upload(idPath, idFile!)
-            const idUrl = supabase.storage.from('documents').getPublicUrl(idPath).data.publicUrl
+            let idUrl = null
+            if (idFile) {
+                const idExt = idFile?.name.split('.').pop()
+                const idPath = `clients/${clientId}_id_${timestamp}.${idExt}`
+                await supabase.storage.from('documents').upload(idPath, idFile!)
+                idUrl = supabase.storage.from('documents').getPublicUrl(idPath).data.publicUrl
+            } else if (hasExistingId) {
+                // Keep existing URL (no update needed for client unless we want to, but client update logic above covers text fields)
+                // We might need to fetch the URL if we want to store it somewhere else, but for now client keeps it.
+            }
 
             // Signed Note
             const noteExt = signedNoteFile?.name.split('.').pop()
@@ -324,34 +344,43 @@ function LoanWizardContent() {
                             <div className="space-y-2">
                                 <label className="text-sm font-medium">Nombre Completo</label>
                                 <Input {...clientForm.register("fullName")} placeholder="Ej: Julio Diaz" />
+                                {clientForm.formState.errors.fullName && <p className="text-red-500 text-xs">{clientForm.formState.errors.fullName.message?.toString()}</p>}
                             </div>
                             <div className="space-y-2">
                                 <label className="text-sm font-medium">Cédula</label>
                                 <Input {...clientForm.register("documentId")} placeholder="123456789" />
+                                {clientForm.formState.errors.documentId && <p className="text-red-500 text-xs">{clientForm.formState.errors.documentId.message?.toString()}</p>}
                             </div>
                             <div className="space-y-2">
                                 <label className="text-sm font-medium">Celular</label>
                                 <Input {...clientForm.register("phone")} placeholder="300..." />
+                                {clientForm.formState.errors.phone && <p className="text-red-500 text-xs">{clientForm.formState.errors.phone.message?.toString()}</p>}
                             </div>
                             <div className="space-y-2">
                                 <label className="text-sm font-medium">Ciudad</label>
                                 <Input {...clientForm.register("city")} />
+                                {clientForm.formState.errors.city && <p className="text-red-500 text-xs">{clientForm.formState.errors.city.message?.toString()}</p>}
                             </div>
                             <div className="md:col-span-2 space-y-2">
                                 <label className="text-sm font-medium">Dirección</label>
                                 <Input {...clientForm.register("address")} />
+                                {clientForm.formState.errors.address && <p className="text-red-500 text-xs">{clientForm.formState.errors.address.message?.toString()}</p>}
                             </div>
                         </div>
 
                         <div className="border-2 border-dashed border-slate-200 rounded-lg p-6 flex flex-col items-center justify-center text-slate-500 bg-slate-50 mt-4">
-                            <FileText className="h-8 w-8 mb-2" />
+                            <FileText className={`h-8 w-8 mb-2 ${hasExistingId ? 'text-blue-500' : ''}`} />
                             <p className="text-sm font-medium mb-2">Foto de Cédula</p>
                             <input
                                 type="file"
-                                onChange={(e) => setIdFile(e.target.files?.[0] || null)}
+                                onChange={(e) => {
+                                    setIdFile(e.target.files?.[0] || null)
+                                    if (e.target.files?.[0]) setHasExistingId(false) // If new file, override 'existing' status visually
+                                }}
                                 className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
                             />
                             {idFile && <p className="text-green-600 text-xs mt-2">Archivo seleccionado: {idFile.name}</p>}
+                            {!idFile && hasExistingId && <p className="text-blue-600 text-xs mt-2 font-medium">✓ Usando cédula existente en sistema (Opcional: Subir nueva)</p>}
                         </div>
 
                         <div className="flex justify-end pt-4">
