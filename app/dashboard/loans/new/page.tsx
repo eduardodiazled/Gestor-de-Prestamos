@@ -384,7 +384,13 @@ function LoanWizardContent() {
                         </div>
 
                         <div className="flex justify-end pt-4">
-                            <Button onClick={clientForm.handleSubmit(handleStep1)}>
+                            <Button
+                                type="button"
+                                onClick={clientForm.handleSubmit(handleStep1, (errors) => {
+                                    const errorMessages = Object.values(errors).map((e: any) => e.message).join('\n')
+                                    alert("Por favor corrige los siguientes errores:\n" + errorMessages)
+                                })}
+                            >
                                 Siguiente <ArrowRight className="ml-2 h-4 w-4" />
                             </Button>
                         </div>
