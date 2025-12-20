@@ -133,17 +133,89 @@ export default function InvestorDashboard() {
             }))
 
             // D. Combine Feed
-            const allMovements = [...paymentMovements, ...payoutMovements].sort((a, b) => {
-                // Approximate sort by subtilte date string is hard, better if we had valid Date objects
-                // For simplicity, we trust the array concat order or use real timestamps if available
-                return 0 // TODO: Strict date sort
+            // E. Final Cash Logic (Cash Flow Simulation)
+            // We simulate the wallet over time. If a loan requires money we don't have, we assume an external deposit.
+            // Events: Loan (-) | Payment (+) | Payout (-)
+
+            const events = [
+                ...(myLoans || []).map(l => ({
+                    type: 'loan',
+                    date: new Date(l.start_date || l.created_at).getTime(),
+                    amount: Number(l.amount)
+                })),
+                ...(myPayments || []).map(p => ({
+                    type: 'payment',
+                    date: new Date(p.payment_date).getTime(),
+                    amount: Number(p.amount)
+                })),
+                ...(myPayouts || []).map(p => ({
+                    type: 'payout',
+                    date: new Date(p.date).getTime(),
+                    amount: Number(p.amount)
+                }))
+            ].sort((a, b) => a.date - b.date)
+
+            let simulatedBalance = 0
+
+            events.forEach(e => {
+                if (e.type === 'payment') {
+                    // Inflow
+                    // Logic: If Interest/Fee, we only add the Investor Share?
+                    // Verify: 'myPayments' logic above calculated 'repaidCap' and 'netP'.
+                    // We should be consistent. The 'amount' in payment is Gross.
+                    // We need Net for the wallet.
+                    // Let's re-map events to use NET amounts.
+                }
             })
 
-            setMovements(allMovements)
+            // Re-do event mapping with logic
+            const sortedEvents = [
+                ...(myLoans || []).map(l => ({
+                    type: 'loan',
+                    date: new Date(l.start_date || l.created_at).getTime(),
+                    amount: Number(l.amount)
+                })),
+                ...(myPayments || []).map(p => {
+                    const amt = Number(p.amount)
+                    let net = amt
+                    if (p.payment_type === 'interest' || p.payment_type === 'fee') {
+                        const fee = (Number(p.loan?.admin_fee_percent) || 40) / 100
+                        net = amt - (amt * fee)
+                    }
+                    return {
+                        type: 'payment',
+                        date: new Date(p.payment_date).getTime(),
+                        amount: net
+                    }
+                }),
+                ...(myPayouts || []).map(p => ({
+                    type: 'payout',
+                    date: new Date(p.date).getTime(),
+                    amount: Number(p.amount)
+                }))
+            ].sort((a, b) => a.date - b.date)
 
-            // E. Final Cash Logic
-            // Available = (Repaid Capital + Net Profit) - Withdrawals
-            const available = (repaidCap + netP) - withdrawn
+            let virtualWallet = 0
+
+            sortedEvents.forEach(e => {
+                if (e.type === 'payment') {
+                    virtualWallet += e.amount
+                } else if (e.type === 'payout') {
+                    virtualWallet -= e.amount
+                } else if (e.type === 'loan') {
+                    // If we have enough cash, use it.
+                    // If not, assume external deposit covers the difference (so wallet doesn't go negative, or effectively goes to 0).
+                    if (virtualWallet >= e.amount) {
+                        virtualWallet -= e.amount
+                    } else {
+                        // We use meaningful cash, rest is external. 
+                        // Example: Have 100. Loan 500. Use 100. Wallet = 0. (400 came from outside).
+                        virtualWallet = 0
+                    }
+                }
+            })
+
+            const available = virtualWallet
 
             setStats({
                 activeCapital: activeCap,

@@ -118,65 +118,53 @@ export default function InvestorDetailsPage() {
             // Total Withdrawn by Investor
             const totalWidthdrawn = payoutsData?.reduce((acc, p) => acc + Number(p.amount), 0) || 0
 
-            // Available = (Capital Repaid + Net Profit) - Withdrawn - (Reinvested is technically "Active Capital" now?)
-            // Wait, logic check:
-            // "Invested" increases when we create a loan.
-            // "Available" typically means Cash in Hand.
-            // Cash In = Initial Capital (Manual?) + Repaid Principal + Net Profit.
-            // Cash Out = New Loans + Withdrawals.
-            // Current "Invested" stat is just Sum(Loan Amount).
-            // Let's assume Initial Capital isn't tracked explicitly, but rather inferred or we just track "Earnings Available".
-            // User asked: "Si Herminia tiene 500k de capital devuelto + intereses... eso es Capital Disponible".
-            // So: Available = (Sum(Principal Repaid) + Sum(Net Profit)) - Sum(Payouts).
-            // Note: Loops/Reinvestment is tricky. If I lend $1M, get $1.2M back. Available is $1.2M.
-            // If I then lend $1.2M. My total 'Invested' history goes up, but my 'Available' goes down.
-            // Does logic hold?
-            // "Active Capital" captures the money currently out ($1.2M).
-            // So "Active Capital" is NOT part of "Available".
-            // So YES: Available = Total In (Principal + Profit) - Total Out (Payouts) - Active Capital??
-            // NO. "Active Capital" is money that LEFT the wallet.
-            // So: Wallet Balance = (Total Principal Repaid + Total Net Profit) - Total Payouts.
-            // BUT: What about the initial capital for the FIRST loan?
-            // If I lend $1M manually. That $1M didn't come from repayment. It came from "Outside".
-            // The system doesn't track "Deposits".
-            // However, the user says: "si me pagan capital, queda disponible".
-            // So, Available = (Repaid Principal + Net Profit) - Payouts.
-            // New Loans REDUCE this availability?
-            // The user manages "Reinvestment" by simply creating a new loan.
-            // If they create a new loan, where does the money come from?
-            // The system doesn't block them.
-            // So "Available" is just a metric of "What has returned and hasn't been taken out".
-            // If they reinvest it, it becomes "Active Capital" again?
-            // Actually, if they reinvest, it typically doesn't leave the system (no Payout), but it's no longer "Liquid".
-            // So we need to subtract "Reinvested from Balance"?
-            // We can't easily distinguish "New Money Loan" vs "Reinvested Loan".
-            // SIMPLIFICATION:
-            // Available for Payout = (Sum of All Inflows) - (Sum of All Outflows).
-            // Inflows = Repaid Principal + Net Profit.
-            // Outflows = Payouts.
-            // WAIT. If I lend $1M. That $1M is NOT an outflow from the SYSTEM perspective (it's active asset).
-            // User Question: "Saber que tengo capital disponible...".
-            // Money returned = Available.
-            // If I then create a NEW loan for $500k. Does that $500k come from the "Available" pile?
-            // Yes.
-            // So Available = (Repaid Principal + Net Profit) - Payouts - (New Loans funded by Balance?).
-            // This requires tracking Source of Funds. Too complex.
-            // ALTERNATIVE:
-            // Just show "Liquid Wallet": Total Generated (Principal+Interest) - Total Withdrawn.
-            // If they make a new loan, that's external event?
-            // No, user specifically said "revertir intereses...".
-            // Let's stick to the User's core need: "Money I hold for her".
-            // Money Held = (Principal Repaid + Net Profit) - Payouts.
-            // *CRITICAL*: New Loans do NOT automatically subtract from this unless we explicitly say "Funds Source: Wallet".
-            // BUT, usually businesses check "Cash Flow".
-            // Let's just display "Caja Acumulada (Sin Retirar)" = (Repaid + Profit) - Payouts.
-            // And add a note: "Este es el dinero que ha retornado. Si se usó para nuevos préstamos, ignora este saldo."
-            // BETTER: User wants to know if they CAN lend.
-            // Let's calculate: Net Cash Flow = (Repaid Principal + Net Profit) - Payouts - (Total Loans Amount?? No).
-            // Let's just show: "Dinero Recaudado No Retirado".
-            // Formula: (Repaid Principal + Net Profit) - Total Payouts.
+            // E. Final Cash Logic (Cash Flow Simulation)
+            // 1. Gather all events
+            const allEvents = [
+                ...(loansData || []).map(l => ({
+                    type: 'loan',
+                    date: new Date(l.start_date || l.created_at).getTime(),
+                    amount: Number(l.amount)
+                })),
+                ...(paymentsData || []).map(p => {
+                    const amt = Number(p.amount)
+                    let net = amt
+                    if (p.payment_type === 'interest' || p.payment_type === 'fee') {
+                        const adminRate = (Number(p.loan?.admin_fee_percent) || 40) / 100
+                        net = amt - (amt * adminRate) // Investor Net Share
+                    }
+                    return {
+                        type: 'payment',
+                        date: new Date(p.payment_date).getTime(),
+                        amount: net
+                    }
+                }),
+                ...(payoutsData || []).map(p => ({
+                    type: 'payout',
+                    date: new Date(p.date).getTime(),
+                    amount: Number(p.amount)
+                }))
+            ].sort((a, b) => a.date - b.date)
 
-            const walletBalance = (capitalRepaid + profit) - totalWidthdrawn
+            let simWallet = 0
+
+            // Simulation
+            allEvents.forEach(e => {
+                if (e.type === 'payment') {
+                    simWallet += e.amount
+                } else if (e.type === 'payout') {
+                    simWallet -= e.amount
+                } else if (e.type === 'loan') {
+                    // Logic: If we have enough cash in wallet (from repayments/profits), we use it.
+                    // If not, we assume the user funded it externally (Deposit), so it doesn't reduce wallet below 0.
+                    // Effectively, if deficit, we set wallet to 0 (all used).
+                    if (simWallet >= e.amount) {
+                        simWallet -= e.amount
+                    } else {
+                        simWallet = 0
+                    }
+                }
+            })
 
             // 5. Merge Transactions (Inflow vs Outflow)
             const inflows = paymentsData.map(p => ({
@@ -201,7 +189,7 @@ export default function InvestorDetailsPage() {
                 activeCapital: active,
                 netProfit: profit,
                 collectedTotal: collected,
-                walletBalance: walletBalance // New Metric
+                walletBalance: simWallet // New Metric
             })
             setLoading(false)
         }
