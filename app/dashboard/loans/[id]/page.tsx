@@ -183,12 +183,46 @@ export default function LoanDetailsPage() {
                     </CardContent>
                 </Card>
 
+                {/* Actions Panel */}
+                <div className="flex flex-col md:flex-row gap-4 mb-6">
+                    {/* 1. Mark as Paid (New Feature) */}
+                    {(loan.status === 'active' || loan.status === 'defaulted') && (
+                        <Card className="bg-amber-50 border-amber-200 flex-1">
+                            <CardHeader className="pb-2">
+                                <CardTitle className="text-amber-800 text-sm flex items-center gap-2">
+                                    <CheckCircle className="h-4 w-4" /> Finalizar Préstamo
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <p className="text-xs text-amber-700 mb-3">Si el cliente ya pagó todo, cierra el préstamo para generar el Paz y Salvo.</p>
+                                <Button
+                                    className="w-full bg-amber-600 hover:bg-amber-700 text-white"
+                                    onClick={async () => {
+                                        if (!confirm("¿Confirmas que este préstamo está TOTALMENTE PAGADO? Al hacerlo se cerrará y podrás generar el Paz y Salvo.")) return;
+
+                                        setLoading(true)
+                                        const { error } = await supabase.from('loans').update({ status: 'paid' }).eq('id', loan.id)
+
+                                        if (error) {
+                                            alert("Error al actualizar: " + error.message)
+                                            setLoading(false)
+                                        } else {
+                                            window.location.reload()
+                                        }
+                                    }}
+                                >
+                                    Marcar como Saldado
+                                </Button>
+                            </CardContent>
+                        </Card>
+                    )}
+                </div>
+
                 <Card>
                     <CardHeader>
                         <CardTitle>Documentación</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        {/* ID Card (Cédula) */}
                         <div className="flex items-center justify-between border p-3 rounded-lg">
                             <div className="flex items-center gap-3">
                                 <FileText className="text-slate-400" />
@@ -364,6 +398,6 @@ export default function LoanDetailsPage() {
                     <Trash2 className="mr-2 h-4 w-4" /> Eliminar Préstamo
                 </Button>
             </div>
-        </div>
+        </div >
     )
 }
