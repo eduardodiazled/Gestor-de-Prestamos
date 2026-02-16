@@ -197,11 +197,11 @@ export default function InvestorDetailsPage() {
         loadData()
     }, [id])
 
-    const handlePayout = async () => {
-        let rawAmount = prompt("Monto a retirar/pagar a socia (sin puntos ni comas):")
+    const handleMovement = async (movementType: 'payout' | 'reinvestment') => {
+        const label = movementType === 'payout' ? 'retirar/pagar a socia' : 'reinvertir como capital'
+        let rawAmount = prompt(`Monto a ${label} (sin puntos ni comas):`)
         if (!rawAmount) return
 
-        // Remove dots or commas just in case user formatted it
         rawAmount = rawAmount.replace(/[.,]/g, '')
         const amount = Number(rawAmount)
 
@@ -210,10 +210,15 @@ export default function InvestorDetailsPage() {
             return
         }
 
+        const notes = movementType === 'reinvestment'
+            ? prompt('Nota (ej: "Reinversión para préstamo Dayan David"):') || 'Reinversión a capital'
+            : 'Retiro manual dashboard'
+
         const { error } = await supabase.from('investor_payouts').insert({
             investor_id: id,
             amount: amount,
-            notes: "Retiro manual dashboard"
+            type: movementType,
+            notes: notes
         })
 
         if (error) {
@@ -242,8 +247,13 @@ export default function InvestorDetailsPage() {
                     <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">Caja Disponible (Retornado + Ganancia)</p>
                     <div className="flex items-center gap-3 justify-end">
                         <p className="text-4xl font-bold text-white">${stats.walletBalance?.toLocaleString()}</p>
-                        <Button onClick={handlePayout} size="sm" variant="secondary" className="text-slate-900 text-xs font-bold">
-                            Registrar Retiro
+                    </div>
+                    <div className="flex gap-2 justify-end mt-2">
+                        <Button onClick={() => handleMovement('payout')} size="sm" variant="secondary" className="text-slate-900 text-xs font-bold">
+                            💸 Registrar Retiro
+                        </Button>
+                        <Button onClick={() => handleMovement('reinvestment')} size="sm" className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold">
+                            🔄 Reinvertir Ganancias
                         </Button>
                     </div>
                     <p className="text-[10px] text-slate-500 mt-1">Este dinero está en tu poder.</p>
@@ -408,28 +418,40 @@ export default function InvestorDetailsPage() {
                         <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
                             {transactions.map((t, idx) => {
                                 const isOut = t.flow === 'out'
+                                const isReinvestment = isOut && t.type === 'reinvestment'
                                 const isCapital = t.payment_type === 'capital' || t.payment_type === 'principal'
-
-                                // Logic: 
-                                // - Outflow: Full red amount.
-                                // - Inflow Capital: Full grren amount.
-                                // - Inflow Interest: Net green amount (minus 40%).
 
                                 const amount = Number(t.amount)
                                 const netAmount = (isOut || isCapital) ? amount : (amount * (1 - ((t.loan?.admin_fee_percent || 40) / 100)))
 
+                                // Color logic: reinvestment = blue, payout = red, income = green
+                                const colorClass = isReinvestment ? 'text-blue-600' : (isOut ? 'text-red-600' : 'text-green-600')
+                                const bgClass = isReinvestment ? 'bg-blue-50 border-blue-200' : 'bg-slate-50'
+
+                                // Label logic
+                                let label = ''
+                                if (isReinvestment) label = 'Reinversión a Capital'
+                                else if (isOut) label = 'Retiro / Transferencia a Socia'
+                                else if (isCapital) label = 'Devolución Capital'
+                                else label = 'Pago Intereses'
+
+                                let title = ''
+                                if (isReinvestment) title = '🔄 ' + (t.notes || 'Reinversión')
+                                else if (isOut) title = 'Retiro de Fondos'
+                                else title = t.loan?.client?.full_name || 'Pago Cliente'
+
                                 return (
-                                    <div key={idx} className="flex items-center justify-between p-3 border rounded-lg bg-slate-50">
+                                    <div key={idx} className={`flex items-center justify-between p-3 border rounded-lg ${bgClass}`}>
                                         <div>
                                             <p className="font-bold text-sm">
-                                                {isOut ? 'Retiro de Fondos' : (t.loan?.client?.full_name || 'Pago Cliente')}
+                                                {title}
                                             </p>
                                             <p className="text-xs text-slate-400">
-                                                {format(t.date, 'dd MMM yyyy')} • {isOut ? 'Transferencia a Socia' : (isCapital ? 'Devolución Capital' : 'Pago Intereses')}
+                                                {format(t.date, 'dd MMM yyyy')} • {label}
                                             </p>
                                         </div>
                                         <div className="text-right">
-                                            <p className={`font-bold text-sm ${isOut ? 'text-red-600' : 'text-green-600'}`}>
+                                            <p className={`font-bold text-sm ${colorClass}`}>
                                                 {isOut ? '-' : '+'}${netAmount.toLocaleString()}
                                             </p>
                                             {!isOut && !isCapital && (
