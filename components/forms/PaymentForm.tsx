@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { supabase } from "@/lib/supabase/client"
 import { Loader2, Upload, Cloud } from "lucide-react"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -30,6 +30,7 @@ interface PaymentFormProps {
 
 export function PaymentForm({ loanId, clientName, suggestedAmount, onSuccess }: PaymentFormProps) {
     const [isSubmitting, setIsSubmitting] = useState(false)
+    const isSubmittingRef = useRef(false) // Lock to prevent double-submit
     const [proofFile, setProofFile] = useState<File | null>(null)
 
     const form = useForm({
@@ -45,6 +46,8 @@ export function PaymentForm({ loanId, clientName, suggestedAmount, onSuccess }: 
     })
 
     async function onSubmit(values: PaymentFormValues) {
+        if (isSubmittingRef.current) return
+        isSubmittingRef.current = true
         setIsSubmitting(true)
 
         try {
@@ -106,8 +109,16 @@ export function PaymentForm({ loanId, clientName, suggestedAmount, onSuccess }: 
         } catch (error: any) {
             console.error("Error creating payment:", error)
             alert("Error: " + error.message)
-        } finally {
+            isSubmittingRef.current = false
             setIsSubmitting(false)
+        } finally {
+            // Wait a bit before unlocking to prevent accidental double taps on reload
+            setTimeout(() => {
+                if (isSubmittingRef.current) { // Check if still mounted/relevant? 
+                    isSubmittingRef.current = false
+                    setIsSubmitting(false)
+                }
+            }, 2000)
         }
     }
 
