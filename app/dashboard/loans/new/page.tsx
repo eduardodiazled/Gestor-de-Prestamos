@@ -184,7 +184,7 @@ function LoanWizardContent() {
             amount: amountVal,
             amountText: amountText,
             city: String(cValues.city || ''),
-            date: format(new Date(), 'd "de" MMMM "de" yyyy', { locale: es }),
+            date: format(new Date(lValues.startDate + 'T12:00:00'), "d 'de' MMMM 'de' yyyy", { locale: es }),
             clientName: String(cValues.fullName || ''),
             clientId: String(cValues.documentId || ''),
             clientAddress: String(cValues.address || ''),
