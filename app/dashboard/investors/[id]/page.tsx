@@ -115,56 +115,10 @@ export default function InvestorDetailsPage() {
                 }
             })
 
-            // Total Withdrawn by Investor
-            const totalWidthdrawn = payoutsData?.reduce((acc, p) => acc + Number(p.amount), 0) || 0
-
-            // E. Final Cash Logic (Cash Flow Simulation)
-            // 1. Gather all events
-            const allEvents = [
-                ...(loansData || []).map(l => ({
-                    type: 'loan',
-                    date: new Date(l.start_date || l.created_at).getTime(),
-                    amount: Number(l.amount)
-                })),
-                ...(paymentsData || []).map(p => {
-                    const amt = Number(p.amount)
-                    let net = amt
-                    if (p.payment_type === 'interest' || p.payment_type === 'fee') {
-                        const adminRate = (Number(p.loan?.admin_fee_percent) || 40) / 100
-                        net = amt - (amt * adminRate) // Investor Net Share
-                    }
-                    return {
-                        type: 'payment',
-                        date: new Date(p.payment_date).getTime(),
-                        amount: net
-                    }
-                }),
-                ...(payoutsData || []).map(p => ({
-                    type: 'payout',
-                    date: new Date(p.date).getTime(),
-                    amount: Number(p.amount)
-                }))
-            ].sort((a, b) => a.date - b.date)
-
-            let simWallet = 0
-
-            // Simulation
-            allEvents.forEach(e => {
-                if (e.type === 'payment') {
-                    simWallet += e.amount
-                } else if (e.type === 'payout') {
-                    simWallet -= e.amount
-                } else if (e.type === 'loan') {
-                    // Logic: If we have enough cash in wallet (from repayments/profits), we use it.
-                    // If not, we assume the user funded it externally (Deposit), so it doesn't reduce wallet below 0.
-                    // Effectively, if deficit, we set wallet to 0 (all used).
-                    if (simWallet >= e.amount) {
-                        simWallet -= e.amount
-                    } else {
-                        simWallet = 0
-                    }
-                }
-            })
+            // E. Wallet Balance: Ganancias Netas - Retiros - Reinversiones
+            // Loans are always funded from external capital unless explicitly reinvested
+            const totalWithdrawn = payoutsData?.reduce((acc, p) => acc + Number(p.amount), 0) || 0
+            const simWallet = profit - totalWithdrawn
 
             // 5. Merge Transactions (Inflow vs Outflow)
             const inflows = paymentsData.map(p => ({
@@ -308,9 +262,9 @@ export default function InvestorDetailsPage() {
             <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg text-sm text-blue-800 flex gap-3">
                 <AlertCircle className="h-5 w-5 shrink-0" />
                 <div>
-                    <h4 className="font-bold">¿Cómo se calcula la "Caja Disponible"?</h4>
-                    <p>Es la suma de todo el **Capital Devuelto** por los clientes + tus **Ganancias Netas**, menos los **Retiros** que te hayamos transferido.</p>
-                    <p className="mt-1 font-medium">Si decides reinvertir este dinero, simplemente creamos un nuevo préstamo y este saldo seguirá aquí como histórico de lo que has generado, pero sabrás que ya está "en la calle" nuevamente si el Capital Activo sube.</p>
+                    <h4 className="font-bold">¿Cómo se calcula la &quot;Caja Disponible&quot;?</h4>
+                    <p>Es tu <strong>Ganancia Neta</strong> (60% de intereses cobrados), menos los <strong>Retiros</strong> que te hayamos transferido y las <strong>Reinversiones</strong> que hayas hecho a nuevo capital.</p>
+                    <p className="mt-1 font-medium">Para reinvertir ganancias en un nuevo préstamo, primero usa el botón &quot;Reinvertir Ganancias&quot; y luego crea el préstamo.</p>
                 </div>
             </div>
 
