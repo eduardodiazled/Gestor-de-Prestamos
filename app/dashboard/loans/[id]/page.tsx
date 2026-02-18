@@ -419,6 +419,6 @@ export default function LoanDetailsPage() {
                     <Trash2 className="mr-2 h-4 w-4" /> Eliminar Préstamo
                 </Button>
             </div>
-        </div >
+        </div>
     )
 }

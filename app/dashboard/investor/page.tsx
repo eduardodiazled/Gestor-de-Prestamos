@@ -65,7 +65,7 @@ export default function InvestorDashboard() {
             // 3. Fetch Payouts (Outflows) - Assuming this table exists, if not we default empty
             const { data: myPayouts } = await supabase
                 .from('investor_payouts')
-                .select('*')
+                .select('*, type')
                 .eq('investor_id', user.id)
                 .order('date', { ascending: false })
 
@@ -150,6 +150,7 @@ export default function InvestorDashboard() {
                 })),
                 ...(myPayouts || []).map(p => ({
                     type: 'payout',
+                    payoutType: p.type, // 'payout' vs 'reinvestment'
                     date: new Date(p.date).getTime(),
                     amount: Number(p.amount)
                 }))
@@ -197,19 +198,21 @@ export default function InvestorDashboard() {
 
             let virtualWallet = 0
 
-            sortedEvents.forEach(e => {
+            sortedEvents.forEach((e: any) => {
                 if (e.type === 'payment') {
                     virtualWallet += e.amount
                 } else if (e.type === 'payout') {
-                    virtualWallet -= e.amount
+                    // ONLY subtract if it's a real withdrawal
+                    // Reinvestments are handled by the 'loan' event funding logic below
+                    if (e.payoutType !== 'reinvestment') {
+                        virtualWallet -= e.amount
+                    }
                 } else if (e.type === 'loan') {
-                    // If we have enough cash, use it.
-                    // If not, assume external deposit covers the difference (so wallet doesn't go negative, or effectively goes to 0).
+                    // Logic: Use wallet funds if available, otherwise assume external injection
+                    // This is where "reinvestments" are actually consumed
                     if (virtualWallet >= e.amount) {
                         virtualWallet -= e.amount
                     } else {
-                        // We use meaningful cash, rest is external. 
-                        // Example: Have 100. Loan 500. Use 100. Wallet = 0. (400 came from outside).
                         virtualWallet = 0
                     }
                 }

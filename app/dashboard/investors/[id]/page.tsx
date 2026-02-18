@@ -84,7 +84,7 @@ export default function InvestorDetailsPage() {
             // 4. Fetch Payouts (Retiros)
             const { data: payoutsData } = await supabase
                 .from('investor_payouts')
-                .select('*')
+                .select('*, type')
                 .eq('investor_id', id)
                 .order('date', { ascending: false })
 
@@ -143,17 +143,21 @@ export default function InvestorDetailsPage() {
                 }),
                 ...(payoutsData || []).map(p => ({
                     type: 'payout',
+                    payoutType: p.type, // 'payout' vs 'reinvestment'
                     date: new Date(p.date).getTime(),
                     amount: Number(p.amount)
                 }))
             ].sort((a, b) => a.date - b.date)
 
             let simulatedWallet = 0
-            events.forEach(e => {
+            events.forEach((e: any) => {
                 if (e.type === 'payment') {
                     simulatedWallet += e.amount
                 } else if (e.type === 'payout') {
-                    simulatedWallet -= e.amount
+                    // ONLY subtract if it's a real withdrawal
+                    if (e.payoutType !== 'reinvestment') {
+                        simulatedWallet -= e.amount
+                    }
                 } else if (e.type === 'loan') {
                     // Match investor dashboard logic: use wallet funds if available, otherwise assume external injection
                     if (simulatedWallet >= e.amount) {
@@ -163,6 +167,21 @@ export default function InvestorDetailsPage() {
                     }
                 }
             })
+
+            // 5. Merge Transactions (Inflow vs Outflow)
+            const inflows = paymentsData.map(p => ({
+                ...p,
+                date: new Date(p.payment_date),
+                flow: 'in'
+            }))
+
+            const outflows = (payoutsData || []).map(p => ({
+                ...p,
+                date: new Date(p.date),
+                flow: 'out'
+            }))
+
+            const allTx = [...inflows, ...outflows].sort((a, b) => b.date.getTime() - a.date.getTime())
 
             setProfile(profileData || { full_name: 'Inversionista' })
             setLoans(loansData)
