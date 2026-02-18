@@ -65,7 +65,7 @@ export default function Dashboard() {
             // 1. Fetch Loans & Payments
             const [{ data: loans }, { data: payments }] = await Promise.all([
                 supabase.from('loans').select('*, client:clients(*), investor:profiles(*)'),
-                supabase.from('payments').select('*, loan:loans(*)')
+                supabase.from('payments').select('*')
             ])
 
             setRawLoans(loans)
@@ -110,20 +110,20 @@ export default function Dashboard() {
             let totalProfit = 0     // Investor Share
             let adminProfit = 0     // Admin Share
 
-            if (payments) {
+            if (payments && loans) {
                 payments.forEach(pay => {
                     const amount = Number(pay.amount)
                     const type = (pay.payment_type || '').toLowerCase().trim()
 
                     // Inclusive check: If it's NOT capital repayment, it's profit (Interest or Fee)
-                    const isCapital = ['capital', 'principal'].includes(type)
+                    const isCapital = ['capital', 'principal', 'abono'].includes(type)
 
                     if (!isCapital && amount > 0) {
-                        // Try to find the loan in our local list for extra metadata (admin fee)
+                        // Find the loan manually in our local list
                         const loanDef = loans.find(l => l.id === pay.loan_id)
 
-                        // Priority: 1. pay.loan (from join), 2. loanDef (from find), 3. Default 40
-                        const adminFeeValue = pay.loan?.admin_fee_percent ?? loanDef?.admin_fee_percent ?? 40
+                        // Default admin fee 40% if not specified in loan
+                        const adminFeeValue = loanDef?.admin_fee_percent ?? 40
                         const adminRate = Number(adminFeeValue) / 100
 
                         const adminShare = amount * adminRate

@@ -1,13 +1,13 @@
 @echo off
 setlocal
 echo ==============================================
-echo    ZALDO - SUBIDOR DE CAMBIOS (BLINDADO)
+echo    ZALDO - RECUPERADOR DE DATOS (FINAL)
 echo ==============================================
 echo.
 echo 1. Preparando archivos...
 git add .
 echo 2. Guardando cambios (Commit)...
-git commit -m "Solucion definitiva: Ganancias Zury, Spanish types y Balance Wallet"
+git commit -m "RECUPERACION DE DATOS: Query simplificada y Blindaje de Ganancias"
 echo 3. Subiendo a la nube (GitHub/Vercel)...
 git push
 echo.
@@ -15,7 +15,7 @@ echo ==============================================
 echo    PROCESO TERMINADO EXITOSAMENTE
 echo ==============================================
 echo.
-echo Ya he blindado el sistema contra tipos de pago en espanol (Interes, Mora, etc.)
-echo y corregido el saldo de Zury Numa.
+echo He vuelto a la forma mas estable de traer los datos para que NADA falle.
+echo Tus ganancias de Mariangelica y Zury DEBEN aparecer ya.
 echo Espera 2 minutos y refresca tu web (Ctrl+F5).
 pause

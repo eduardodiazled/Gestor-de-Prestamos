@@ -68,14 +68,19 @@ export default function InvestorDetailsPage() {
 
 
 
-            // 3. Fetch Payments linked to these loans (Optimized Join)
-            const { data: paymentsData, error: pError } = await supabase
-                .from('payments')
-                .select('*, loan!inner(*)')
-                .eq('loan.investor_id', id)
+            // 3. Fetch Payments linked to these loans (Failsafe Fetch)
+            const loanIds = (loansData || []).map(l => l.id)
+            let paymentsData: any[] = []
 
-            if (pError) console.error("Error fetching payments:", pError)
-            const finalPayments = paymentsData || []
+            if (loanIds.length > 0) {
+                const { data: pays } = await supabase
+                    .from('payments')
+                    .select('*')
+                    .in('loan_id', loanIds)
+                    .order('payment_date', { ascending: false })
+                paymentsData = pays || []
+            }
+            const finalPayments = paymentsData
 
             // 4. Fetch Payouts (Retiros)
             const { data: payoutsData } = await supabase
@@ -103,11 +108,13 @@ export default function InvestorDetailsPage() {
                 const amount = Number(p.amount)
                 const type = (p.payment_type || '').toLowerCase().trim()
 
-                // Robust check: Anything NOT capital/principal is considered profit
-                const isCapital = ['capital', 'principal'].includes(type)
+                // Robust check: Anything NOT capital/principal/abono is considered profit
+                const isCapital = ['capital', 'principal', 'abono'].includes(type)
 
                 if (!isCapital && amount > 0) {
-                    const adminRate = (Number(p.loan?.admin_fee_percent) || 40) / 100
+                    // Match loan manually for metadata
+                    const lMatch = loansData.find(ld => ld.id === p.loan_id)
+                    const adminRate = (Number(lMatch?.admin_fee_percent) || 40) / 100
                     const adminPart = amount * adminRate
                     const investorShare = amount - adminPart
 
@@ -132,9 +139,10 @@ export default function InvestorDetailsPage() {
                     let net = amt
                     const pType = (p.payment_type || '').toLowerCase().trim()
 
-                    const isCapital = ['capital', 'principal'].includes(pType)
+                    const isCapital = ['capital', 'principal', 'abono'].includes(pType)
                     if (!isCapital && amt > 0) {
-                        const fee = (Number(p.loan?.admin_fee_percent) || 40) / 100
+                        const lMatch = loansData.find(ld => ld.id === p.loan_id)
+                        const fee = (Number(lMatch?.admin_fee_percent) || 40) / 100
                         net = amt - (amt * fee)
                     }
                     return {

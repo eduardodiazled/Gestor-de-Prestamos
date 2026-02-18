@@ -56,11 +56,16 @@ export default function InvestorDashboard() {
                 .order('start_date', { ascending: false })
 
             // 2. Fetch Payments (Inflows)
-            const { data: myPayments } = await supabase
-                .from('payments')
-                .select('*, loan:loans!inner(*)')
-                .eq('loan.investor_id', user.id)
-                .order('payment_date', { ascending: false })
+            const loanIds = (myLoans || []).map(l => l.id)
+            let myPayments: any[] = []
+            if (loanIds.length > 0) {
+                const { data: pays } = await supabase
+                    .from('payments')
+                    .select('*')
+                    .in('loan_id', loanIds)
+                    .order('payment_date', { ascending: false })
+                myPayments = pays || []
+            }
 
             // 3. Fetch Payouts (Outflows) - Assuming this table exists, if not we default empty
             const { data: myPayouts } = await supabase
@@ -93,11 +98,12 @@ export default function InvestorDashboard() {
                 let netAmount = amount
                 const type = (p.payment_type || '').toLowerCase().trim()
 
-                // Robust check: Anything NOT capital/principal is considered profit
-                const isCapital = ['capital', 'principal'].includes(type)
+                // Robust check: Anything NOT capital/principal/abono is considered profit
+                const isCapital = ['capital', 'principal', 'abono'].includes(type)
 
                 if (!isCapital && amount > 0) {
-                    const feePercent = (Number(p.loan?.admin_fee_percent) || 40) / 100
+                    const lMatch = (myLoans || []).find(ml => ml.id === p.loan_id)
+                    const feePercent = (Number(lMatch?.admin_fee_percent) || 40) / 100
                     const adminPart = amount * feePercent
                     const netPart = amount - adminPart
 
@@ -183,9 +189,10 @@ export default function InvestorDashboard() {
                     let net = amt
                     const pType = (p.payment_type || '').toLowerCase().trim()
 
-                    const isCapital = ['capital', 'principal'].includes(pType)
+                    const isCapital = ['capital', 'principal', 'abono'].includes(pType)
                     if (!isCapital && amt > 0) {
-                        const feePercent = (Number(p.loan?.admin_fee_percent) || 40) / 100
+                        const lMatch = (myLoans || []).find(ml => ml.id === p.loan_id)
+                        const feePercent = (Number(lMatch?.admin_fee_percent) || 40) / 100
                         net = amt - (amt * feePercent)
                     }
                     return {
