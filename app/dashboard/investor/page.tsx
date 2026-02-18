@@ -118,11 +118,12 @@ export default function InvestorDashboard() {
                 return {
                     id: p.id,
                     type: 'inflow',
-                    title: 'Pago Cliente',
+                    title: isCapital ? 'Abono Capital' : 'Pago Intereses',
                     subtitle: format(new Date(p.payment_date), 'dd MMM yyyy', { locale: es }),
+                    rawDate: new Date(p.payment_date).getTime(),
                     amount: netAmount,
                     gross: amount,
-                    isInterest: p.payment_type === 'interest'
+                    isInterest: !isCapital
                 }
             })
 
@@ -135,12 +136,15 @@ export default function InvestorDashboard() {
             const payoutMovements = (myPayouts || []).map((p: any) => ({
                 id: p.id,
                 type: 'outflow',
-                title: 'Retiro Registrado',
+                title: p.type === 'reinvestment' ? 'Reinversión Ganancia' : 'Retiro Registrado',
                 subtitle: format(new Date(p.date), 'dd MMM yyyy', { locale: es }),
+                rawDate: new Date(p.date).getTime(),
                 amount: Number(p.amount)
             }))
 
             // D. Combine Feed
+            const allMovements = [...paymentMovements, ...payoutMovements].sort((a, b) => b.rawDate - a.rawDate)
+            setMovements(allMovements)
             // E. Final Cash Logic (Cash Flow Simulation)
             // We simulate the wallet over time. If a loan requires money we don't have, we assume an external deposit.
             // Events: Loan (-) | Payment (+) | Payout (-)
@@ -410,7 +414,7 @@ export default function InvestorDashboard() {
                                                     </div>
                                                 </td>
                                                 <td className="p-4 text-slate-500">
-                                                    {format(new Date(loan.start_date), 'dd/MM/yyyy')}
+                                                    {format(new Date(loan.start_date), 'dd MMM yyyy', { locale: es })}
                                                 </td>
                                                 <td className="p-4 font-bold text-slate-800">
                                                     ${Number(loan.amount).toLocaleString()}
@@ -447,8 +451,8 @@ export default function InvestorDashboard() {
                                     {movements.map((move, i) => (
                                         <li key={i} className="relative pl-10">
                                             {/* Dot */}
-                                            <div className={`absolute left - 2.5 top - 1.5 h - 3 w - 3 rounded - full border - 2 border - white shadow - sm z - 10 
-                                                ${move.type === 'inflow' ? 'bg-green-500' : 'bg-red-400'} `}></div>
+                                            <div className={`absolute -left-1.5 top-1.5 h-3 w-3 rounded-full border-2 border-white shadow-sm z-10 
+                                                ${move.type === 'inflow' ? 'bg-green-500' : 'bg-red-400'}`}></div>
 
                                             <div className="flex justify-between items-start">
                                                 <div>
@@ -459,7 +463,7 @@ export default function InvestorDashboard() {
                                                     )}
                                                 </div>
                                                 <div className="text-right">
-                                                    <p className={`font - bold text - sm ${move.type === 'inflow' ? 'text-green-600' : 'text-red-500'} `}>
+                                                    <p className={`font-bold text-sm ${move.type === 'inflow' ? 'text-green-600' : 'text-red-500'}`}>
                                                         {move.type === 'inflow' ? '+' : '-'}${move.amount.toLocaleString()}
                                                     </p>
                                                     {move.type === 'inflow' && move.gross && (
