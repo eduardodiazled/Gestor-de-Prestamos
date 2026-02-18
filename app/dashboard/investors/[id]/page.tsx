@@ -208,9 +208,9 @@ export default function InvestorDetailsPage() {
             setStats({
                 investedCapital: invested,
                 activeCapital: active,
-                netProfit: profitWallet,
+                netProfit: profit, // Cumulative generated net profit (e.g. 1.5M)
                 collectedTotal: grossProfit,
-                walletBalance: profitWallet + capitalWallet,
+                walletBalance: profitWallet, // Liquid cash available (e.g. 500k)
                 adminFee: adminFee
             })
             setLoading(false)

@@ -143,16 +143,8 @@ export default function Dashboard() {
                 })
             }
 
-            // Subtract Payouts (withdrawals/reinvestments) from investor profit to get "Liquid Profit"
-            if (payouts && loans) {
-                payouts.forEach(p => {
-                    const inv = loans.find(l => l.investor_id === p.investor_id)?.investor
-                    const invName = (inv?.full_name || 'Inversionista Desconocido').trim()
-                    if (invStats[invName]) {
-                        invStats[invName].profit -= Number(p.amount)
-                    }
-                })
-            }
+            // We keep the 'profit' as the cumulative generated net interest to match the KPI cards.
+            // Liquid balance is shown in the detailed investor view header.
 
 
             setStats({

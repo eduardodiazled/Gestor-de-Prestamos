@@ -240,11 +240,11 @@ export default function InvestorDashboard() {
             setStats({
                 activeCapital: activeCap,
                 grossProfit: grossP,
-                netProfit: profitWallet,
+                netProfit: netP, // Cumulative generated (e.g. 1.5M)
                 adminFee: adminF,
                 repaidCapital: capitalWallet,
                 totalWithdrawn: withdrawn,
-                availableCash: profitWallet + capitalWallet
+                availableCash: profitWallet // Liquid available (e.g. 500k)
             })
 
             setLoading(false)
