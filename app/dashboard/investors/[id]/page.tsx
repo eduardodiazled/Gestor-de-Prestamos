@@ -105,9 +105,12 @@ export default function InvestorDetailsPage() {
 
             paymentsData.forEach(p => {
                 const amount = Number(p.amount)
-                const type = (p.payment_type || '').toLowerCase()
+                const type = (p.payment_type || '').toLowerCase().trim()
 
-                if (type === 'interest' || type === 'fee') {
+                // Inclusive check: If it's NOT capital repayment, it's profit (Interest or Fee)
+                const isCapital = ['capital', 'principal', 'abono'].includes(type)
+
+                if (!isCapital && amount > 0) {
                     const adminRate = (Number(p.loan?.admin_fee_percent) || 40) / 100
                     const adminPart = amount * adminRate
                     const investorShare = amount - adminPart
@@ -115,7 +118,7 @@ export default function InvestorDetailsPage() {
                     profit += investorShare
                     adminFee += adminPart
                     grossProfit += amount
-                } else if (type === 'principal' || type === 'capital') {
+                } else if (isCapital) {
                     capitalRepaid += amount
                 }
             })
@@ -131,8 +134,10 @@ export default function InvestorDetailsPage() {
                 ...paymentsData.map(p => {
                     const amt = Number(p.amount)
                     let net = amt
-                    const pType = (p.payment_type || '').toLowerCase()
-                    if (pType === 'interest' || pType === 'fee') {
+                    const pType = (p.payment_type || '').toLowerCase().trim()
+
+                    const isCapital = ['capital', 'principal', 'abono'].includes(pType)
+                    if (!isCapital && amt > 0) {
                         const fee = (Number(p.loan?.admin_fee_percent) || 40) / 100
                         net = amt - (amt * fee)
                     }

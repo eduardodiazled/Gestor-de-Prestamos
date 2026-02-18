@@ -112,10 +112,13 @@ export default function Dashboard() {
 
             if (payments) {
                 payments.forEach(pay => {
-                    const type = (pay.payment_type || '').toLowerCase()
-                    if (type === 'interest' || type === 'fee') {
-                        const amount = Number(pay.amount)
+                    const amount = Number(pay.amount)
+                    const type = (pay.payment_type || '').toLowerCase().trim()
 
+                    // Inclusive check: If it's NOT capital repayment, it's profit (Interest or Fee)
+                    const isCapital = ['capital', 'principal', 'abono'].includes(type)
+
+                    if (!isCapital && amount > 0) {
                         // Try to find the loan in our local list for extra metadata (admin fee)
                         const loanDef = loans.find(l => l.id === pay.loan_id)
 
@@ -129,7 +132,6 @@ export default function Dashboard() {
                         adminProfit += adminShare
                         totalProfit += investorShare
 
-                        // Add to specific investor stats
                         // Add to specific investor stats
                         const invName = (loanDef?.investor?.full_name || 'Unknown').trim()
                         if (invStats[invName]) {
