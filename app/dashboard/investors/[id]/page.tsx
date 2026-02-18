@@ -105,7 +105,7 @@ export default function InvestorDetailsPage() {
 
             paymentsData.forEach(p => {
                 const amount = Number(p.amount)
-                const type = p.payment_type
+                const type = (p.payment_type || '').toLowerCase()
 
                 if (type === 'interest' || type === 'fee') {
                     const adminRate = (Number(p.loan?.admin_fee_percent) || 40) / 100
@@ -131,7 +131,8 @@ export default function InvestorDetailsPage() {
                 ...paymentsData.map(p => {
                     const amt = Number(p.amount)
                     let net = amt
-                    if (p.payment_type === 'interest' || p.payment_type === 'fee') {
+                    const pType = (p.payment_type || '').toLowerCase()
+                    if (pType === 'interest' || pType === 'fee') {
                         const fee = (Number(p.loan?.admin_fee_percent) || 40) / 100
                         net = amt - (amt * fee)
                     }

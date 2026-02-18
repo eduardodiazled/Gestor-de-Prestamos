@@ -91,10 +91,10 @@ export default function InvestorDashboard() {
             const paymentMovements = (myPayments || []).map((p: any) => {
                 const amount = Number(p.amount)
                 let netAmount = amount
-                let type = 'payment'
+                const type = (p.payment_type || '').toLowerCase()
 
                 // Logic breakdown
-                if (p.payment_type === 'interest' || p.payment_type === 'fee') {
+                if (type === 'interest' || type === 'fee') {
                     const feePercent = (Number(p.loan?.admin_fee_percent) || 40) / 100
                     const adminPart = amount * feePercent
                     const netPart = amount - adminPart
@@ -103,7 +103,7 @@ export default function InvestorDashboard() {
                     adminF += adminPart
                     netP += netPart
                     netAmount = netPart // For the movement feed
-                } else if (p.payment_type === 'capital' || p.payment_type === 'principal') {
+                } else if (type === 'capital' || type === 'principal') {
                     repaidCap += amount
                 }
 
@@ -179,9 +179,10 @@ export default function InvestorDashboard() {
                 ...(myPayments || []).map(p => {
                     const amt = Number(p.amount)
                     let net = amt
-                    if (p.payment_type === 'interest' || p.payment_type === 'fee') {
-                        const fee = (Number(p.loan?.admin_fee_percent) || 40) / 100
-                        net = amt - (amt * fee)
+                    const pType = (p.payment_type || '').toLowerCase()
+                    if (pType === 'interest' || pType === 'fee') {
+                        const feePercent = (Number(p.loan?.admin_fee_percent) || 40) / 100
+                        net = amt - (amt * feePercent)
                     }
                     return {
                         type: 'payment',

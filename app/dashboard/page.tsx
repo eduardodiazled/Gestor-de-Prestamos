@@ -91,7 +91,7 @@ export default function Dashboard() {
                 }
 
                 // Initialize investor stats
-                const invName = loan.investor?.full_name || 'Unknown'
+                const invName = (loan.investor?.full_name || 'Unknown').trim()
                 const invId = loan.investor_id
 
                 if (!invStats[invName]) invStats[invName] = { id: invId, capital: 0, profit: 0, collected: 0 }
@@ -112,12 +112,16 @@ export default function Dashboard() {
 
             if (payments) {
                 payments.forEach(pay => {
-                    // Only count Interest and Fees as Profit (Capital return is not profit)
-                    if (pay.payment_type === 'interest' || pay.payment_type === 'fee') {
+                    const type = (pay.payment_type || '').toLowerCase()
+                    if (type === 'interest' || type === 'fee') {
                         const amount = Number(pay.amount)
 
-                        // Default fee if missing
-                        const adminRate = (Number(pay.loan?.admin_fee_percent) || 40) / 100
+                        // Try to find the loan in our local list for extra metadata (admin fee)
+                        const loanDef = loans.find(l => l.id === pay.loan_id)
+
+                        // Priority: 1. pay.loan (from join), 2. loanDef (from find), 3. Default 40
+                        const adminFeeValue = pay.loan?.admin_fee_percent ?? loanDef?.admin_fee_percent ?? 40
+                        const adminRate = Number(adminFeeValue) / 100
 
                         const adminShare = amount * adminRate
                         const investorShare = amount - adminShare
@@ -126,9 +130,8 @@ export default function Dashboard() {
                         totalProfit += investorShare
 
                         // Add to specific investor stats
-                        const loanDef = loans.find(l => l.id === pay.loan_id)
-                        const invName = loanDef?.investor?.full_name || 'Unknown'
-
+                        // Add to specific investor stats
+                        const invName = (loanDef?.investor?.full_name || 'Unknown').trim()
                         if (invStats[invName]) {
                             invStats[invName].profit += investorShare
                             invStats[invName].collected += amount
