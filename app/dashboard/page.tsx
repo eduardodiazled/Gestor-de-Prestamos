@@ -116,7 +116,7 @@ export default function Dashboard() {
                     const type = (pay.payment_type || '').toLowerCase().trim()
 
                     // Inclusive check: If it's NOT capital repayment, it's profit (Interest or Fee)
-                    const isCapital = ['capital', 'principal', 'abono'].includes(type)
+                    const isCapital = ['capital', 'principal'].includes(type)
 
                     if (!isCapital && amount > 0) {
                         // Try to find the loan in our local list for extra metadata (admin fee)

@@ -68,18 +68,14 @@ export default function InvestorDetailsPage() {
 
 
 
-            // 3. Fetch Payments linked to these loans
-            const loanIds = loansData.map(l => l.id)
-            let paymentsData: any[] = []
+            // 3. Fetch Payments linked to these loans (Optimized Join)
+            const { data: paymentsData, error: pError } = await supabase
+                .from('payments')
+                .select('*, loan!inner(*)')
+                .eq('loan.investor_id', id)
 
-            if (loanIds.length > 0) {
-                const { data: pays } = await supabase
-                    .from('payments')
-                    .select('*, loan:loans(*)')
-                    .in('loan_id', loanIds)
-                    .order('payment_date', { ascending: false })
-                paymentsData = pays || []
-            }
+            if (pError) console.error("Error fetching payments:", pError)
+            const finalPayments = paymentsData || []
 
             // 4. Fetch Payouts (Retiros)
             const { data: payoutsData } = await supabase
@@ -103,12 +99,12 @@ export default function InvestorDetailsPage() {
                 }
             })
 
-            paymentsData.forEach(p => {
+            finalPayments.forEach(p => {
                 const amount = Number(p.amount)
                 const type = (p.payment_type || '').toLowerCase().trim()
 
-                // Inclusive check: If it's NOT capital repayment, it's profit (Interest or Fee)
-                const isCapital = ['capital', 'principal', 'abono'].includes(type)
+                // Robust check: Anything NOT capital/principal is considered profit
+                const isCapital = ['capital', 'principal'].includes(type)
 
                 if (!isCapital && amount > 0) {
                     const adminRate = (Number(p.loan?.admin_fee_percent) || 40) / 100
@@ -131,12 +127,12 @@ export default function InvestorDetailsPage() {
                     date: new Date(l.start_date || l.created_at).getTime(),
                     amount: Number(l.amount)
                 })),
-                ...paymentsData.map(p => {
+                ...finalPayments.map(p => {
                     const amt = Number(p.amount)
                     let net = amt
                     const pType = (p.payment_type || '').toLowerCase().trim()
 
-                    const isCapital = ['capital', 'principal', 'abono'].includes(pType)
+                    const isCapital = ['capital', 'principal'].includes(pType)
                     if (!isCapital && amt > 0) {
                         const fee = (Number(p.loan?.admin_fee_percent) || 40) / 100
                         net = amt - (amt * fee)
@@ -160,22 +156,20 @@ export default function InvestorDetailsPage() {
                 if (e.type === 'payment') {
                     simulatedWallet += e.amount
                 } else if (e.type === 'payout') {
-                    // ONLY subtract if it's a real withdrawal
                     if (e.payoutType !== 'reinvestment') {
                         simulatedWallet -= e.amount
                     }
                 } else if (e.type === 'loan') {
-                    // Match investor dashboard logic: use wallet funds if available, otherwise assume external injection
+                    // Logic: Only subtract from wallet if it has enough funds.
+                    // If not, assume the loan was funded externally.
                     if (simulatedWallet >= e.amount) {
                         simulatedWallet -= e.amount
-                    } else {
-                        simulatedWallet = 0
                     }
                 }
             })
 
             // 5. Merge Transactions (Inflow vs Outflow)
-            const inflows = paymentsData.map(p => ({
+            const inflows = finalPayments.map(p => ({
                 ...p,
                 date: new Date(p.payment_date),
                 flow: 'in'

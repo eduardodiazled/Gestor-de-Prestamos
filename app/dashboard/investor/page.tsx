@@ -93,8 +93,8 @@ export default function InvestorDashboard() {
                 let netAmount = amount
                 const type = (p.payment_type || '').toLowerCase().trim()
 
-                // Inclusive check: If it's NOT capital repayment, it's profit (Interest or Fee)
-                const isCapital = ['capital', 'principal', 'abono'].includes(type)
+                // Robust check: Anything NOT capital/principal is considered profit
+                const isCapital = ['capital', 'principal'].includes(type)
 
                 if (!isCapital && amount > 0) {
                     const feePercent = (Number(p.loan?.admin_fee_percent) || 40) / 100
@@ -183,7 +183,7 @@ export default function InvestorDashboard() {
                     let net = amt
                     const pType = (p.payment_type || '').toLowerCase().trim()
 
-                    const isCapital = ['capital', 'principal', 'abono'].includes(pType)
+                    const isCapital = ['capital', 'principal'].includes(pType)
                     if (!isCapital && amt > 0) {
                         const feePercent = (Number(p.loan?.admin_fee_percent) || 40) / 100
                         net = amt - (amt * feePercent)
@@ -214,12 +214,10 @@ export default function InvestorDashboard() {
                         virtualWallet -= e.amount
                     }
                 } else if (e.type === 'loan') {
-                    // Logic: Use wallet funds if available, otherwise assume external injection
-                    // This is where "reinvestments" are actually consumed
+                    // Logic: Only subtract from wallet if it has enough funds.
+                    // If not, assume the loan was funded externally.
                     if (virtualWallet >= e.amount) {
                         virtualWallet -= e.amount
-                    } else {
-                        virtualWallet = 0
                     }
                 }
             })
