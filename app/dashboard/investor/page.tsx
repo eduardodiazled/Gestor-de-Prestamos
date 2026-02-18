@@ -326,18 +326,18 @@ export default function InvestorDashboard() {
                         </CardContent>
                     </Card>
 
-                    {/* Capital Reserve (Available to lend) */}
+                    {/* Admin Fee / Management */}
                     <Card className="shadow-lg border-0 ring-1 ring-slate-100">
                         <CardHeader className="pb-2 pt-6">
                             <CardTitle className="text-sm font-medium text-slate-500 flex justify-between">
-                                Capital Disponible (Reserva) <DollarSign className="h-4 w-4 text-slate-300" />
+                                Comisión Administración <Users className="h-4 w-4 text-slate-300" />
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold text-slate-800">
-                                ${(stats.repaidCapital).toLocaleString('es-CO')}
+                                ${(stats.adminFee).toLocaleString('es-CO')}
                             </div>
-                            <p className="text-xs text-slate-400 mt-1 font-medium">Capital retornado + Reinversiones</p>
+                            <p className="text-xs text-slate-400 mt-1 font-medium">Pago por gestión operativa</p>
                         </CardContent>
                     </Card>
 
