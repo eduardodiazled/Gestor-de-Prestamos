@@ -58,7 +58,7 @@ export default function InvestorDashboard() {
             // 2. Fetch Payments (Inflows)
             const { data: myPayments } = await supabase
                 .from('payments')
-                .select('*, loan:loans!inner(investor_id)')
+                .select('*, loan:loans!inner(*)')
                 .eq('loan.investor_id', user.id)
                 .order('payment_date', { ascending: false })
 
@@ -191,6 +191,7 @@ export default function InvestorDashboard() {
                 }),
                 ...(myPayouts || []).map(p => ({
                     type: 'payout',
+                    payoutType: p.type,
                     date: new Date(p.date).getTime(),
                     amount: Number(p.amount)
                 }))
