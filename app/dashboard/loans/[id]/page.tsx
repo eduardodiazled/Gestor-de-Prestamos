@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Loader2, FileText, ArrowLeft, Download, Upload, CheckCircle, Trash2, Printer, TrendingUp } from "lucide-react"
-import { generatePazYSalvo } from "@/lib/pdf/generator"
+import { generatePazYSalvo, generatePaymentReceipt } from "@/lib/pdf/generator"
 
 export default function LoanDetailsPage() {
     const params = useParams()
@@ -18,6 +18,18 @@ export default function LoanDetailsPage() {
     const [loan, setLoan] = useState<any>(null)
     const [payments, setPayments] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
+
+    const handleDownloadReceipt = async (payment: any) => {
+        if (!loan) return;
+        await generatePaymentReceipt({
+            id: payment.id,
+            date: format(new Date(payment.payment_date), 'dd/MM/yyyy'),
+            amount: Number(payment.amount),
+            clientName: loan.client?.full_name || 'Cliente',
+            concept: payment.payment_type,
+            investorName: loan.investor?.full_name
+        });
+    };
 
     useEffect(() => {
         async function loadDetails() {
@@ -337,6 +349,15 @@ export default function LoanDetailsPage() {
                                             ) : (
                                                 <span className="text-slate-300 text-xs text-center block w-16">Sin foto</span>
                                             )}
+
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+                                                onClick={() => handleDownloadReceipt(pay)}
+                                            >
+                                                <Printer className="h-4 w-4" />
+                                            </Button>
 
                                             <Button
                                                 variant="ghost"

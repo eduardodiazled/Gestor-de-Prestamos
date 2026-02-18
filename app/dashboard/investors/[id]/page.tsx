@@ -27,7 +27,8 @@ export default function InvestorDetailsPage() {
         activeCapital: 0,
         netProfit: 0,
         collectedTotal: 0,
-        walletBalance: 0
+        walletBalance: 0,
+        adminFee: 0
     })
 
     useEffect(() => {
@@ -91,7 +92,8 @@ export default function InvestorDetailsPage() {
             let invested = 0
             let active = 0
             let profit = 0
-            let collected = 0
+            let grossProfit = 0
+            let adminFee = 0
             let capitalRepaid = 0 // Principal returned by client
 
             loansData.forEach(l => {
@@ -107,33 +109,60 @@ export default function InvestorDetailsPage() {
 
                 if (type === 'interest' || type === 'fee') {
                     const adminRate = (Number(p.loan?.admin_fee_percent) || 40) / 100
-                    const investorShare = amount - (amount * adminRate)
+                    const adminPart = amount * adminRate
+                    const investorShare = amount - adminPart
+
                     profit += investorShare
-                    collected += amount
+                    adminFee += adminPart
+                    grossProfit += amount
                 } else if (type === 'principal' || type === 'capital') {
                     capitalRepaid += amount
                 }
             })
 
-            // E. Wallet Balance: Ganancias Netas - Retiros - Reinversiones
-            // Loans are always funded from external capital unless explicitly reinvested
-            const totalWithdrawn = payoutsData?.reduce((acc, p) => acc + Number(p.amount), 0) || 0
-            const simWallet = profit - totalWithdrawn
+            // Wallet Balance logic to match Investor View (Simulated)
+            // Sequence events: Loans (-) | Payments (+) | Payouts (-)
+            const events = [
+                ...(loansData || []).map(l => ({
+                    type: 'loan',
+                    date: new Date(l.start_date || l.created_at).getTime(),
+                    amount: Number(l.amount)
+                })),
+                ...paymentsData.map(p => {
+                    const amt = Number(p.amount)
+                    let net = amt
+                    if (p.payment_type === 'interest' || p.payment_type === 'fee') {
+                        const fee = (Number(p.loan?.admin_fee_percent) || 40) / 100
+                        net = amt - (amt * fee)
+                    }
+                    return {
+                        type: 'payment',
+                        date: new Date(p.payment_date).getTime(),
+                        amount: net
+                    }
+                }),
+                ...(payoutsData || []).map(p => ({
+                    type: 'payout',
+                    date: new Date(p.date).getTime(),
+                    amount: Number(p.amount)
+                }))
+            ].sort((a, b) => a.date - b.date)
 
-            // 5. Merge Transactions (Inflow vs Outflow)
-            const inflows = paymentsData.map(p => ({
-                ...p,
-                date: new Date(p.payment_date),
-                flow: 'in'
-            }))
-
-            const outflows = (payoutsData || []).map(p => ({
-                ...p,
-                date: new Date(p.date),
-                flow: 'out'
-            }))
-
-            const allTx = [...inflows, ...outflows].sort((a, b) => b.date.getTime() - a.date.getTime())
+            let simulatedWallet = 0
+            events.forEach(e => {
+                if (e.type === 'payment') {
+                    simulatedWallet += e.amount
+                } else if (e.type === 'payout') {
+                    simulatedWallet -= e.amount
+                } else if (e.type === 'loan') {
+                    // Match investor dashboard logic: use wallet funds if available, otherwise assume external injection
+                    if (simulatedWallet >= e.amount) {
+                        simulatedWallet -= e.amount
+                    } else {
+                        simulatedWallet = 0
+                    }
+                }
+            })
 
             setProfile(profileData || { full_name: 'Inversionista' })
             setLoans(loansData)
@@ -142,8 +171,9 @@ export default function InvestorDetailsPage() {
                 investedCapital: invested,
                 activeCapital: active,
                 netProfit: profit,
-                collectedTotal: collected,
-                walletBalance: simWallet // New Metric
+                collectedTotal: grossProfit, // Changed to use grossProfit
+                walletBalance: simulatedWallet,
+                adminFee: adminFee
             })
             setLoading(false)
         }
@@ -222,7 +252,7 @@ export default function InvestorDetailsPage() {
                         <DollarSign className="h-4 w-4 text-slate-500" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-slate-900">${(stats.netProfit + (stats.netProfit / 60 * 40)).toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+                        <div className="text-2xl font-bold text-slate-900">${stats.collectedTotal?.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
                         <p className="text-xs text-slate-500">Intereses Totales Generados</p>
                     </CardContent>
                 </Card>
@@ -242,8 +272,8 @@ export default function InvestorDetailsPage() {
                         <Users className="h-4 w-4 text-slate-500" />
                     </CardHeader>
                     <CardContent>
-                        {/* Reverse calc: Net is 60%, so Admin is Net/60*40 */}
-                        <div className="text-2xl font-bold text-slate-900">${(stats.netProfit / 60 * 40).toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+                        {/* Use real admin fee calculation */}
+                        <div className="text-2xl font-bold text-slate-900">${stats.adminFee?.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
                         <p className="text-xs text-slate-500">Pago por gestión operativa</p>
                     </CardContent>
                 </Card>
