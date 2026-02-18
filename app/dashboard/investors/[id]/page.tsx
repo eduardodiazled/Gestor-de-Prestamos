@@ -7,8 +7,10 @@ import { format } from "date-fns"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Loader2, ArrowLeft, TrendingUp, DollarSign, Users, AlertCircle, FileText, Download } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Loader2, ArrowLeft, TrendingUp, DollarSign, Users, AlertCircle, FileText, Download, Wallet } from "lucide-react"
 
 export default function InvestorDetailsPage() {
     const params = useParams()
@@ -28,8 +30,15 @@ export default function InvestorDetailsPage() {
         netProfit: 0,
         collectedTotal: 0,
         walletBalance: 0,
+        earningsBalance: 0,
+        capitalBalance: 0,
         adminFee: 0
     })
+
+    const [isMoveOpen, setIsMoveOpen] = useState(false)
+    const [moveType, setMoveType] = useState<'payout' | 'reinvestment'>('payout')
+    const [moveSource, setMoveSource] = useState<'earnings' | 'capital'>('earnings')
+    const [moveLoading, setMoveLoading] = useState(false)
 
     useEffect(() => {
         async function loadData() {
@@ -85,7 +94,7 @@ export default function InvestorDetailsPage() {
             // 4. Fetch Payouts (Retiros)
             const { data: payoutsData } = await supabase
                 .from('investor_payouts')
-                .select('*, type')
+                .select('*, type, fund_source')
                 .eq('investor_id', id)
                 .order('date', { ascending: false })
 
@@ -154,6 +163,7 @@ export default function InvestorDetailsPage() {
                 }),
                 ...(payoutsData || []).map(p => ({
                     type: 'payout',
+                    source: p.fund_source || 'earnings',
                     payoutType: p.type, // 'payout' vs 'reinvestment'
                     date: new Date(p.date).getTime(),
                     amount: Number(p.amount)
@@ -161,7 +171,7 @@ export default function InvestorDetailsPage() {
             ].sort((a, b) => a.date - b.date)
 
             let profitWallet = 0   // Liquid Interest
-            let capitalWallet = 0  // Principal reserve
+            let capitalWallet = 0  // Principal reserve (Limbo)
 
             events.forEach((e: any) => {
                 if (e.type === 'payment') {
@@ -172,17 +182,26 @@ export default function InvestorDetailsPage() {
                     }
                 } else if (e.type === 'payout') {
                     if (e.payoutType === 'reinvestment') {
-                        // Move from profit to capital
+                        // Move from profit to capital reserve
                         profitWallet -= e.amount
                         capitalWallet += e.amount
                     } else {
-                        // Direct withdrawal
-                        profitWallet -= e.amount
+                        // Direct withdrawal from chosen source
+                        if (e.source === 'capital') {
+                            capitalWallet -= e.amount
+                        } else {
+                            profitWallet -= e.amount
+                        }
                     }
                 } else if (e.type === 'loan') {
-                    // Fund from capital reserve if possible
+                    // Logic: Use Capital Reserve (Limbo) first for new loans
                     if (capitalWallet >= e.amount) {
                         capitalWallet -= e.amount
+                    } else {
+                        // If not enough capital, we don't subtract from profitWallet
+                        // because that would imply mandatory reinvestment. 
+                        // We assume external capital was injected.
+                        capitalWallet = 0
                     }
                 }
             })
@@ -208,9 +227,11 @@ export default function InvestorDetailsPage() {
             setStats({
                 investedCapital: invested,
                 activeCapital: active,
-                netProfit: profit, // Cumulative generated net profit (e.g. 1.5M)
+                netProfit: profit,
                 collectedTotal: grossProfit,
-                walletBalance: profitWallet, // Liquid cash available (e.g. 500k)
+                walletBalance: profitWallet + capitalWallet, // Hybrid Total
+                earningsBalance: profitWallet,
+                capitalBalance: capitalWallet,
                 adminFee: adminFee
             })
             setLoading(false)
@@ -219,33 +240,29 @@ export default function InvestorDetailsPage() {
         loadData()
     }, [id])
 
-    const handleMovement = async (movementType: 'payout' | 'reinvestment') => {
-        const label = movementType === 'payout' ? 'retirar/pagar a socia' : 'reinvertir como capital'
-        let rawAmount = prompt(`Monto a ${label} (sin puntos ni comas):`)
-        if (!rawAmount) return
+    const [moveAmount, setMoveAmount] = useState('')
+    const [moveNotes, setMoveNotes] = useState('')
 
-        rawAmount = rawAmount.replace(/[.,]/g, '')
-        const amount = Number(rawAmount)
-
+    const handleConfirmMovement = async () => {
+        const amount = Number(moveAmount.replace(/[.,]/g, ''))
         if (isNaN(amount) || amount <= 0) {
-            alert("Por favor ingresa un número válido (ej: 50000)")
+            alert("Monto inválido")
             return
         }
 
-        const notes = movementType === 'reinvestment'
-            ? prompt('Nota (ej: "Reinversión para préstamo Dayan David"):') || 'Reinversión a capital'
-            : 'Retiro manual dashboard'
-
+        setMoveLoading(true)
         const { error } = await supabase.from('investor_payouts').insert({
             investor_id: id,
             amount: amount,
-            type: movementType,
-            notes: notes
+            type: moveType,
+            fund_source: moveSource,
+            notes: moveNotes || (moveType === 'reinvestment' ? 'Reinversión a capital' : 'Retiro manual dashboard')
         })
 
         if (error) {
             console.error(error)
-            alert("Error al guardar: " + (error.message || error.details || JSON.stringify(error)))
+            alert("Error: " + error.message)
+            setMoveLoading(false)
         } else {
             window.location.reload()
         }
@@ -266,19 +283,36 @@ export default function InvestorDetailsPage() {
                     <p className="text-slate-400 text-sm">Portal de Socia</p>
                 </div>
                 <div className="text-right">
-                    <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">Caja Disponible (Retornado + Ganancia)</p>
+                    <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">Caja Disponible (Poder Total)</p>
                     <div className="flex items-center gap-3 justify-end">
                         <p className="text-4xl font-bold text-white">${stats.walletBalance?.toLocaleString()}</p>
                     </div>
-                    <div className="flex gap-2 justify-end mt-2">
-                        <Button onClick={() => handleMovement('payout')} size="sm" variant="secondary" className="text-slate-900 text-xs font-bold">
+                    <div className="flex gap-4 justify-end mt-2 text-[11px] font-medium border-t border-slate-800 pt-2">
+                        <div className="flex items-center gap-1.5">
+                            <div className="h-2 w-2 rounded-full bg-green-500"></div>
+                            <span className="text-slate-300">Ganancias:</span>
+                            <span className="text-green-400">${stats.earningsBalance.toLocaleString()}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                            <div className="h-2 w-2 rounded-full bg-blue-500"></div>
+                            <span className="text-slate-300">Capital (Limbo):</span>
+                            <span className="text-blue-400">${stats.capitalBalance.toLocaleString()}</span>
+                        </div>
+                    </div>
+                    <div className="flex gap-2 justify-end mt-4">
+                        <Button
+                            onClick={() => { setMoveType('payout'); setIsMoveOpen(true); }}
+                            size="sm" variant="secondary" className="text-slate-900 text-xs font-bold"
+                        >
                             💸 Registrar Retiro
                         </Button>
-                        <Button onClick={() => handleMovement('reinvestment')} size="sm" className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold">
+                        <Button
+                            onClick={() => { setMoveType('reinvestment'); setIsMoveOpen(true); }}
+                            size="sm" className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold"
+                        >
                             🔄 Reinvertir Ganancias
                         </Button>
                     </div>
-                    <p className="text-[10px] text-slate-500 mt-1">Este dinero está en tu poder.</p>
                 </div>
             </div>
 
@@ -471,6 +505,11 @@ export default function InvestorDetailsPage() {
                                             </p>
                                             <p className="text-xs text-slate-400">
                                                 {format(t.date, 'dd MMM yyyy')} • {label}
+                                                {isOut && t.fund_source && (
+                                                    <span className={`ml-2 px-1 rounded text-[10px] uppercase border ${t.fund_source === 'capital' ? 'border-blue-200 text-blue-600 bg-blue-50' : 'border-green-200 text-green-600 bg-green-50'}`}>
+                                                        {t.fund_source === 'capital' ? 'Capital/Limbo' : 'Ganancias'}
+                                                    </span>
+                                                )}
                                             </p>
                                         </div>
                                         <div className="text-right">
@@ -489,6 +528,82 @@ export default function InvestorDetailsPage() {
                     </CardContent>
                 </Card>
             </div>
+            {/* Movement Dialog */}
+            <Dialog open={isMoveOpen} onOpenChange={setIsMoveOpen}>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            {moveType === 'payout' ? <DollarSign className="h-5 w-5 text-red-500" /> : <TrendingUp className="h-5 w-5 text-blue-500" />}
+                            {moveType === 'payout' ? 'Registrar Retiro / Pago' : 'Reinvertir Ganancias'}
+                        </DialogTitle>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="grid gap-2">
+                            <Label htmlFor="amount">Monto (ej: 500000)</Label>
+                            <Input
+                                id="amount"
+                                type="text"
+                                value={moveAmount}
+                                onChange={(e) => setMoveAmount(e.target.value)}
+                                placeholder="0"
+                                className="text-lg font-bold"
+                            />
+                        </div>
+
+                        <div className="grid gap-2">
+                            <Label>Origen de los Fondos</Label>
+                            <div className="grid grid-cols-2 gap-2">
+                                <Button
+                                    type="button"
+                                    variant={moveSource === 'earnings' ? 'default' : 'outline'}
+                                    className={moveSource === 'earnings' ? 'bg-green-600 hover:bg-green-700' : ''}
+                                    onClick={() => setMoveSource('earnings')}
+                                >
+                                    <TrendingUp className="mr-2 h-4 w-4" /> Ganancias
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant={moveSource === 'capital' ? 'default' : 'outline'}
+                                    className={moveSource === 'capital' ? 'bg-blue-600 hover:bg-blue-700' : ''}
+                                    onClick={() => setMoveSource('capital')}
+                                >
+                                    <Wallet className="mr-2 h-4 w-4" /> Capital (Limbo)
+                                </Button>
+                            </div>
+                            <p className="text-[10px] text-slate-500 mt-1">
+                                {moveSource === 'earnings'
+                                    ? `Disponible en ganancias: $${stats.earningsBalance.toLocaleString()}`
+                                    : `Disponible en capital: $${stats.capitalBalance.toLocaleString()}`
+                                }
+                            </p>
+                        </div>
+
+                        <div className="grid gap-2">
+                            <Label htmlFor="notes">Notas / Concepto</Label>
+                            <Input
+                                id="notes"
+                                value={moveNotes}
+                                onChange={(e) => setMoveNotes(e.target.value)}
+                                placeholder={moveType === 'reinvestment' ? 'Ej: Reinversión para cliente X' : 'Ej: Pago cuota socia'}
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsMoveOpen(false)} disabled={moveLoading}>
+                            Cancelar
+                        </Button>
+                        <Button
+                            onClick={handleConfirmMovement}
+                            disabled={moveLoading || !moveAmount}
+                            className={moveType === 'payout' ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'}
+                        >
+                            {moveLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Confirmar {moveType === 'payout' ? 'Retiro' : 'Reinversión'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
             {/* Document Viewer Dialog */}
             <Dialog open={!!selectedLoan} onOpenChange={(open) => !open && setSelectedLoan(null)}>
                 <DialogContent>
