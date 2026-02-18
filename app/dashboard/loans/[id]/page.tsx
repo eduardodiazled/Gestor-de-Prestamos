@@ -371,7 +371,7 @@ export default function LoanDetailsPage() {
                                                     else window.location.reload()
                                                 }}
                                             >
-                                                Trash
+                                                <Trash2 className="h-4 w-4" />
                                             </Button>
                                         </td>
                                     </tr>
