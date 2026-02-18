@@ -63,9 +63,10 @@ export default function Dashboard() {
             setProfile(profileData)
 
             // 1. Fetch Loans & Payments
-            const [{ data: loans }, { data: payments }] = await Promise.all([
+            const [{ data: loans }, { data: payments }, { data: payouts }] = await Promise.all([
                 supabase.from('loans').select('*, client:clients(*), investor:profiles(*)'),
-                supabase.from('payments').select('*')
+                supabase.from('payments').select('*'),
+                supabase.from('investor_payouts').select('*')
             ])
 
             setRawLoans(loans)
@@ -133,7 +134,7 @@ export default function Dashboard() {
                         totalProfit += investorShare
 
                         // Add to specific investor stats
-                        const invName = (loanDef?.investor?.full_name || 'Unknown').trim()
+                        const invName = (loanDef?.investor?.full_name || 'Inversionista Desconocido').trim()
                         if (invStats[invName]) {
                             invStats[invName].profit += investorShare
                             invStats[invName].collected += amount
@@ -141,6 +142,18 @@ export default function Dashboard() {
                     }
                 })
             }
+
+            // Subtract Payouts (withdrawals/reinvestments) from investor profit to get "Liquid Profit"
+            if (payouts && loans) {
+                payouts.forEach(p => {
+                    const inv = loans.find(l => l.investor_id === p.investor_id)?.investor
+                    const invName = (inv?.full_name || 'Inversionista Desconocido').trim()
+                    if (invStats[invName]) {
+                        invStats[invName].profit -= Number(p.amount)
+                    }
+                })
+            }
+
 
             setStats({
                 activeCapital: cap,

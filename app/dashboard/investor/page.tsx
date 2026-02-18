@@ -198,7 +198,8 @@ export default function InvestorDashboard() {
                     return {
                         type: 'payment',
                         date: new Date(p.payment_date).getTime(),
-                        amount: net
+                        amount: net,
+                        isCapital: isCapital
                     }
                 }),
                 ...(myPayouts || []).map(p => ({
@@ -209,36 +210,41 @@ export default function InvestorDashboard() {
                 }))
             ].sort((a, b) => a.date - b.date)
 
-            let virtualWallet = 0
+            let profitWallet = 0
+            let capitalWallet = 0
 
             sortedEvents.forEach((e: any) => {
                 if (e.type === 'payment') {
-                    virtualWallet += e.amount
+                    if (e.isCapital) {
+                        capitalWallet += e.amount
+                    } else {
+                        profitWallet += e.amount
+                    }
                 } else if (e.type === 'payout') {
-                    // ONLY subtract if it's a real withdrawal
-                    // Reinvestments are handled by the 'loan' event funding logic below
-                    if (e.payoutType !== 'reinvestment') {
-                        virtualWallet -= e.amount
+                    if (e.payoutType === 'reinvestment') {
+                        // Movement from profit to capital
+                        profitWallet -= e.amount
+                        capitalWallet += e.amount
+                    } else {
+                        // Real withdrawal
+                        profitWallet -= e.amount
                     }
                 } else if (e.type === 'loan') {
-                    // Logic: Only subtract from wallet if it has enough funds.
-                    // If not, assume the loan was funded externally.
-                    if (virtualWallet >= e.amount) {
-                        virtualWallet -= e.amount
+                    // Logic: Only subtract from capital reserve if it has enough funds.
+                    if (capitalWallet >= e.amount) {
+                        capitalWallet -= e.amount
                     }
                 }
             })
 
-            const available = virtualWallet
-
             setStats({
                 activeCapital: activeCap,
                 grossProfit: grossP,
-                netProfit: netP,
+                netProfit: profitWallet,
                 adminFee: adminF,
-                repaidCapital: repaidCap,
+                repaidCapital: capitalWallet,
                 totalWithdrawn: withdrawn,
-                availableCash: available
+                availableCash: profitWallet + capitalWallet
             })
 
             setLoading(false)
@@ -309,29 +315,29 @@ export default function InvestorDashboard() {
                     <Card className="shadow-lg border-0 ring-1 ring-green-100 bg-green-50/50">
                         <CardHeader className="pb-2 pt-6">
                             <CardTitle className="text-sm font-bold text-green-700 flex justify-between">
-                                Tu Ganancia Neta <TrendingUp className="h-4 w-4 text-green-600" />
+                                Ganancia Neta (Líquida) <TrendingUp className="h-4 w-4 text-green-600" />
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold text-green-700">
-                                +${stats.netProfit.toLocaleString()}
+                                ${(stats.netProfit).toLocaleString('es-CO')}
                             </div>
-                            <p className="text-xs text-green-600/80 mt-1 font-medium">Lo que te corresponde</p>
+                            <p className="text-xs text-green-600/80 mt-1 font-medium">Intereses - Retiros - Reinversiones</p>
                         </CardContent>
                     </Card>
 
-                    {/* Admin Fee */}
+                    {/* Capital Reserve (Available to lend) */}
                     <Card className="shadow-lg border-0 ring-1 ring-slate-100">
                         <CardHeader className="pb-2 pt-6">
                             <CardTitle className="text-sm font-medium text-slate-500 flex justify-between">
-                                Comisión Administración <Users className="h-4 w-4 text-slate-300" />
+                                Capital Disponible (Reserva) <DollarSign className="h-4 w-4 text-slate-300" />
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold text-slate-800">
-                                ${stats.adminFee.toLocaleString()}
+                                ${(stats.repaidCapital).toLocaleString('es-CO')}
                             </div>
-                            <p className="text-xs text-slate-400 mt-1">Pago por gestión operativa</p>
+                            <p className="text-xs text-slate-400 mt-1 font-medium">Capital retornado + Reinversiones</p>
                         </CardContent>
                     </Card>
 
@@ -441,8 +447,8 @@ export default function InvestorDashboard() {
                                     {movements.map((move, i) => (
                                         <li key={i} className="relative pl-10">
                                             {/* Dot */}
-                                            <div className={`absolute left-2.5 top-1.5 h-3 w-3 rounded-full border-2 border-white shadow-sm z-10 
-                                                ${move.type === 'inflow' ? 'bg-green-500' : 'bg-red-400'}`}></div>
+                                            <div className={`absolute left - 2.5 top - 1.5 h - 3 w - 3 rounded - full border - 2 border - white shadow - sm z - 10 
+                                                ${move.type === 'inflow' ? 'bg-green-500' : 'bg-red-400'} `}></div>
 
                                             <div className="flex justify-between items-start">
                                                 <div>
@@ -453,7 +459,7 @@ export default function InvestorDashboard() {
                                                     )}
                                                 </div>
                                                 <div className="text-right">
-                                                    <p className={`font-bold text-sm ${move.type === 'inflow' ? 'text-green-600' : 'text-red-500'}`}>
+                                                    <p className={`font - bold text - sm ${move.type === 'inflow' ? 'text-green-600' : 'text-red-500'} `}>
                                                         {move.type === 'inflow' ? '+' : '-'}${move.amount.toLocaleString()}
                                                     </p>
                                                     {move.type === 'inflow' && move.gross && (

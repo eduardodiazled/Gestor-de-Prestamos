@@ -28,6 +28,7 @@ export default function InvestorDetailsPage() {
         netProfit: 0,
         collectedTotal: 0,
         walletBalance: 0,
+        capitalReserve: 0,
         adminFee: 0
     })
 
@@ -148,7 +149,8 @@ export default function InvestorDetailsPage() {
                     return {
                         type: 'payment',
                         date: new Date(p.payment_date).getTime(),
-                        amount: net
+                        amount: net,
+                        isCapital: isCapital
                     }
                 }),
                 ...(payoutsData || []).map(p => ({
@@ -159,19 +161,29 @@ export default function InvestorDetailsPage() {
                 }))
             ].sort((a, b) => a.date - b.date)
 
-            let simulatedWallet = 0
+            let profitWallet = 0   // Liquid Interest
+            let capitalWallet = 0  // Principal reserve
+
             events.forEach((e: any) => {
                 if (e.type === 'payment') {
-                    simulatedWallet += e.amount
+                    if (e.isCapital) {
+                        capitalWallet += e.amount
+                    } else {
+                        profitWallet += e.amount
+                    }
                 } else if (e.type === 'payout') {
-                    if (e.payoutType !== 'reinvestment') {
-                        simulatedWallet -= e.amount
+                    if (e.payoutType === 'reinvestment') {
+                        // Move from profit to capital
+                        profitWallet -= e.amount
+                        capitalWallet += e.amount
+                    } else {
+                        // Direct withdrawal
+                        profitWallet -= e.amount
                     }
                 } else if (e.type === 'loan') {
-                    // Logic: Only subtract from wallet if it has enough funds.
-                    // If not, assume the loan was funded externally.
-                    if (simulatedWallet >= e.amount) {
-                        simulatedWallet -= e.amount
+                    // Fund from capital reserve if possible
+                    if (capitalWallet >= e.amount) {
+                        capitalWallet -= e.amount
                     }
                 }
             })
@@ -197,9 +209,10 @@ export default function InvestorDetailsPage() {
             setStats({
                 investedCapital: invested,
                 activeCapital: active,
-                netProfit: profit,
-                collectedTotal: grossProfit, // Changed to use grossProfit
-                walletBalance: simulatedWallet,
+                netProfit: profitWallet,
+                collectedTotal: grossProfit,
+                walletBalance: profitWallet + capitalWallet, // Total available cash
+                capitalReserve: capitalWallet,
                 adminFee: adminFee
             })
             setLoading(false)
@@ -283,25 +296,29 @@ export default function InvestorDetailsPage() {
                         <p className="text-xs text-slate-500">Intereses Totales Generados</p>
                     </CardContent>
                 </Card>
-                <Card className="bg-green-50 border-green-200">
+                <Card className="border-green-100 bg-green-50/30">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium text-green-900">Tu Ganancia Neta</CardTitle>
+                        <CardTitle className="text-sm font-medium text-green-700">Ganancia Neta (Líquida)</CardTitle>
                         <TrendingUp className="h-4 w-4 text-green-600" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-green-700">+${stats.netProfit.toLocaleString()}</div>
-                        <p className="text-xs text-green-600">Lo que te corresponde</p>
+                        <div className="text-2xl font-bold text-green-600">
+                            ${(stats.netProfit).toLocaleString('es-CO')}
+                        </div>
+                        <p className="text-xs text-green-600 mt-1">Intereses cobrados - Retiros - Reinversiones</p>
                     </CardContent>
                 </Card>
-                <Card>
+
+                <Card className="border-blue-100 bg-blue-50/30">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Comisión Administración</CardTitle>
-                        <Users className="h-4 w-4 text-slate-500" />
+                        <CardTitle className="text-sm font-medium text-blue-700">Capital Disponible (Reserva)</CardTitle>
+                        <DollarSign className="h-4 w-4 text-blue-600" />
                     </CardHeader>
                     <CardContent>
-                        {/* Use real admin fee calculation */}
-                        <div className="text-2xl font-bold text-slate-900">${stats.adminFee?.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
-                        <p className="text-xs text-slate-500">Pago por gestión operativa</p>
+                        <div className="text-2xl font-bold text-blue-600">
+                            ${(stats.capitalReserve).toLocaleString('es-CO')}
+                        </div>
+                        <p className="text-xs text-blue-600 mt-1">Retornos de Capital + Reinversiones</p>
                     </CardContent>
                 </Card>
                 <Card>
