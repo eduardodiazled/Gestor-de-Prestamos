@@ -25,7 +25,9 @@ export default function InvestorDashboard() {
         adminFee: 0,
         repaidCapital: 0,
         totalWithdrawn: 0,
-        availableCash: 0
+        availableCash: 0,
+        earningsBalance: 0,
+        capitalBalance: 0
     })
     const [loans, setLoans] = useState<any[]>([])
     const [movements, setMovements] = useState<any[]>([])
@@ -67,10 +69,10 @@ export default function InvestorDashboard() {
                 myPayments = pays || []
             }
 
-            // 3. Fetch Payouts (Outflows) - Assuming this table exists, if not we default empty
+            // 3. Fetch Payouts (Outflows)
             const { data: myPayouts } = await supabase
                 .from('investor_payouts')
-                .select('*, type')
+                .select('*, type, fund_source')
                 .eq('investor_id', user.id)
                 .order('date', { ascending: false })
 
@@ -84,11 +86,6 @@ export default function InvestorDashboard() {
 
             // A. Loans Stats
             if (myLoans) {
-                myLoans.forEach(l => {
-                    if (l.status === 'active' || l.status === 'defaulted') {
-                        activeCap += Number(l.amount)
-                    }
-                })
                 setLoans(myLoans)
             }
 
@@ -127,6 +124,20 @@ export default function InvestorDashboard() {
                 }
             })
 
+            // Calculate current active capital (money on the street)
+            if (myLoans) {
+                myLoans.forEach(l => {
+                    if (l.status === 'active' || l.status === 'defaulted') {
+                        const loanId = l.id
+                        const loanCapitalRepaid = (myPayments || [])
+                            .filter(p => p.loan_id === loanId && ['capital', 'principal', 'abono'].includes((p.payment_type || '').toLowerCase().trim()))
+                            .reduce((sum, p) => sum + Number(p.amount), 0)
+
+                        activeCap += (Number(l.amount) - loanCapitalRepaid)
+                    }
+                })
+            }
+
             // C. Payouts Stats (Analyze Outflows)
             if (myPayouts) {
                 myPayouts.forEach((p: any) => {
@@ -139,7 +150,8 @@ export default function InvestorDashboard() {
                 title: p.type === 'reinvestment' ? 'Reinversión Ganancia' : 'Retiro Registrado',
                 subtitle: format(new Date(p.date), 'dd MMM yyyy', { locale: es }),
                 rawDate: new Date(p.date).getTime(),
-                amount: Number(p.amount)
+                amount: Number(p.amount),
+                fund_source: p.fund_source || 'earnings'
             }))
 
             // D. Combine Feed
@@ -208,6 +220,7 @@ export default function InvestorDashboard() {
                 }),
                 ...(myPayouts || []).map(p => ({
                     type: 'payout',
+                    source: p.fund_source || 'earnings',
                     payoutType: p.type,
                     date: new Date(p.date).getTime(),
                     amount: Number(p.amount)
@@ -230,13 +243,19 @@ export default function InvestorDashboard() {
                         profitWallet -= e.amount
                         capitalWallet += e.amount
                     } else {
-                        // Real withdrawal
-                        profitWallet -= e.amount
+                        // Direct withdrawal from chosen source
+                        if (e.source === 'capital') {
+                            capitalWallet -= e.amount
+                        } else {
+                            profitWallet -= e.amount
+                        }
                     }
                 } else if (e.type === 'loan') {
-                    // Logic: Only subtract from capital reserve if it has enough funds.
+                    // Fund from capital reserve if possible
                     if (capitalWallet >= e.amount) {
                         capitalWallet -= e.amount
+                    } else {
+                        capitalWallet = 0
                     }
                 }
             })
@@ -244,11 +263,13 @@ export default function InvestorDashboard() {
             setStats({
                 activeCapital: activeCap,
                 grossProfit: grossP,
-                netProfit: netP, // Cumulative generated (e.g. 1.5M)
+                netProfit: netP,
                 adminFee: adminF,
-                repaidCapital: capitalWallet,
+                repaidCapital: repaidCap,
                 totalWithdrawn: withdrawn,
-                availableCash: profitWallet // Liquid available (e.g. 500k)
+                availableCash: profitWallet + capitalWallet, // Hybrid Total
+                earningsBalance: profitWallet,
+                capitalBalance: capitalWallet
             })
 
             setLoading(false)
@@ -285,13 +306,24 @@ export default function InvestorDashboard() {
                         </Button>
                     </div>
 
-                    <div className="bg-slate-900/50 backdrop-blur-sm p-4 rounded-xl border border-white/10 flex flex-col md:items-end min-w-[280px]">
-                        <p className="text-xs text-slate-400 font-medium uppercase tracking-wider mb-1">Caja Disponible (Retornado + Ganancia)</p>
-                        <div className="text-4xl font-bold text-emerald-400 mb-3">
+                    <div className="bg-slate-900/50 backdrop-blur-sm p-4 rounded-xl border border-white/10 flex flex-col md:items-end min-w-[300px]">
+                        <p className="text-xs text-slate-400 font-medium uppercase tracking-wider mb-1">Caja Disponible (Poder Total)</p>
+                        <div className="text-4xl font-bold text-emerald-400">
                             ${stats.availableCash.toLocaleString()}
                         </div>
-                        {/* Admin Only Button Removed */}
-                        <p className="text-[10px] text-slate-500 mt-2 text-right w-full">Este dinero está en tu poder.</p>
+                        <div className="flex gap-4 justify-end mt-3 text-[11px] font-medium border-t border-white/10 pt-2 w-full">
+                            <div className="flex items-center gap-1.5 text-right w-full justify-end">
+                                <div className="h-2 w-2 rounded-full bg-green-500"></div>
+                                <span className="text-slate-400">Ganancias:</span>
+                                <span className="text-green-400">${stats.earningsBalance.toLocaleString()}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5 text-right justify-end">
+                                <div className="h-2 w-2 rounded-full bg-blue-500"></div>
+                                <span className="text-slate-400">Capital Disponible:</span>
+                                <span className="text-blue-400">${stats.capitalBalance.toLocaleString()}</span>
+                            </div>
+                        </div>
+                        <p className="text-[10px] text-slate-500 mt-2 text-right w-full italic">Este dinero está en tu poder.</p>
                     </div>
                 </div>
             </header>
@@ -468,6 +500,11 @@ export default function InvestorDashboard() {
                                                     </p>
                                                     {move.type === 'inflow' && move.gross && (
                                                         <p className="text-[10px] text-slate-300">Bruto: ${move.gross.toLocaleString()}</p>
+                                                    )}
+                                                    {move.type === 'outflow' && move.fund_source && (
+                                                        <span className={`px-1 rounded text-[9px] uppercase border inline-block mt-1 ${move.fund_source === 'capital' ? 'border-blue-200 text-blue-600 bg-blue-50' : 'border-green-200 text-green-600 bg-green-50'}`}>
+                                                            {move.fund_source === 'capital' ? 'Capital' : 'Ganancias'}
+                                                        </span>
                                                     )}
                                                 </div>
                                             </div>

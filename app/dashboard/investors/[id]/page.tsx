@@ -108,9 +108,6 @@ export default function InvestorDetailsPage() {
 
             loansData.forEach(l => {
                 invested += Number(l.amount)
-                if (l.status === 'active' || l.status === 'defaulted') {
-                    active += Number(l.amount)
-                }
             })
 
             finalPayments.forEach(p => {
@@ -132,6 +129,18 @@ export default function InvestorDetailsPage() {
                     grossProfit += amount
                 } else if (isCapital) {
                     capitalRepaid += amount
+                }
+            })
+
+            // Calculate current active capital (money on the street)
+            loansData.forEach(l => {
+                if (l.status === 'active' || l.status === 'defaulted') {
+                    const loanId = l.id
+                    const loanCapitalRepaid = finalPayments
+                        .filter(p => p.loan_id === loanId && ['capital', 'principal', 'abono'].includes((p.payment_type || '').toLowerCase().trim()))
+                        .reduce((sum, p) => sum + Number(p.amount), 0)
+
+                    active += (Number(l.amount) - loanCapitalRepaid)
                 }
             })
 
@@ -171,7 +180,7 @@ export default function InvestorDetailsPage() {
             ].sort((a, b) => a.date - b.date)
 
             let profitWallet = 0   // Liquid Interest
-            let capitalWallet = 0  // Principal reserve (Limbo)
+            let capitalWallet = 0  // Principal reserve (Disponible)
 
             events.forEach((e: any) => {
                 if (e.type === 'payment') {
@@ -295,7 +304,7 @@ export default function InvestorDetailsPage() {
                         </div>
                         <div className="flex items-center gap-1.5">
                             <div className="h-2 w-2 rounded-full bg-blue-500"></div>
-                            <span className="text-slate-300">Capital (Limbo):</span>
+                            <span className="text-slate-300">Capital Disponible:</span>
                             <span className="text-blue-400">${stats.capitalBalance.toLocaleString()}</span>
                         </div>
                     </div>
@@ -507,7 +516,7 @@ export default function InvestorDetailsPage() {
                                                 {format(t.date, 'dd MMM yyyy')} • {label}
                                                 {isOut && t.fund_source && (
                                                     <span className={`ml-2 px-1 rounded text-[10px] uppercase border ${t.fund_source === 'capital' ? 'border-blue-200 text-blue-600 bg-blue-50' : 'border-green-200 text-green-600 bg-green-50'}`}>
-                                                        {t.fund_source === 'capital' ? 'Capital/Limbo' : 'Ganancias'}
+                                                        {t.fund_source === 'capital' ? 'Capital Disponible' : 'Ganancias'}
                                                     </span>
                                                 )}
                                             </p>
@@ -567,7 +576,7 @@ export default function InvestorDetailsPage() {
                                     className={moveSource === 'capital' ? 'bg-blue-600 hover:bg-blue-700' : ''}
                                     onClick={() => setMoveSource('capital')}
                                 >
-                                    <Wallet className="mr-2 h-4 w-4" /> Capital (Limbo)
+                                    <Wallet className="mr-2 h-4 w-4" /> Capital Disponible
                                 </Button>
                             </div>
                             <p className="text-[10px] text-slate-500 mt-1">

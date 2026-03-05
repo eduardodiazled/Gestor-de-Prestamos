@@ -22,6 +22,8 @@ export default function LoanReportPage() {
     const [stats, setStats] = useState({
         totalPrincipal: 0,
         totalInterest: 0,
+        capitalPaid: 0,
+        interestPaid: 0,
         amountPaid: 0,
         balance: 0,
         progress: 0,
@@ -51,29 +53,30 @@ export default function LoanReportPage() {
 
         if (loanData) {
             const principal = Number(loanData.amount)
-            let paid = 0
+            let paidTotal = 0
+            let capPaid = 0
+            let intPaid = 0
 
             paymentsData?.forEach(p => {
-                paid += Number(p.amount)
+                const amt = Number(p.amount)
+                paidTotal += amt
+                const type = (p.payment_type || '').toLowerCase().trim()
+                if (['capital', 'principal', 'abono'].includes(type)) {
+                    capPaid += amt
+                } else {
+                    intPaid += amt
+                }
             })
 
-            // Simple Logic: Balance = Principal - CapitalPaid (This depends on logic, assume simple amort for now or interest-only)
-            // For report visualization, let's show Total Paid vs Total Loan Amount context
-
-            // Re-calculate based on simple interest model often used here
-            // Assuming Balance is tracked or calculated. 
-            // If interest only: Balance = Principal (until end).
-            // Let's assume standard behavior:
-
-            const balance = loanData.status === 'completed' ? 0 : principal // Simplified
-            const progress = Math.min((paid / (principal * 1.2)) * 100, 100) // Estimate current progress against roughly 20% interest total? 
-            // Better: Progress of TIME or EXPECTED RETURN.
-            // Let's stick to concrete numbers: Paid vs Borrowed (Visual)
+            const balance = Math.max(0, principal - capPaid)
+            const progress = principal > 0 ? Math.min((capPaid / principal) * 100, 100) : 0
 
             setStats({
                 totalPrincipal: principal,
-                totalInterest: 0, // Dynamic
-                amountPaid: paid,
+                totalInterest: intPaid,
+                capitalPaid: capPaid,
+                interestPaid: intPaid,
+                amountPaid: paidTotal,
                 balance: balance,
                 progress: progress,
                 projectedTotal: principal
@@ -93,15 +96,31 @@ export default function LoanReportPage() {
 
     // Charts Data
     const pieData = [
-        { name: 'Pagado', value: stats.amountPaid, color: '#22c55e' }, // Green
-        { name: 'Pendiente', value: Math.max(0, stats.totalPrincipal - stats.amountPaid), color: '#d1d5db' } // Gray
+        { name: 'Capital Pagado', value: stats.capitalPaid, color: '#22c55e' }, // Green
+        { name: 'Saldo Pendiente', value: stats.balance, color: '#d1d5db' } // Gray
     ]
 
     const barData = payments.map((p, i) => ({
         date: format(new Date(p.payment_date), 'dd/MM'),
         monto: Number(p.amount),
-        type: p.payment_type
+        type: p.payment_type === 'interest' ? 'Interés' : 'Capital'
     }))
+
+    // Generate running balance for the table
+    let currentBalance = stats.totalPrincipal
+    const tableData = payments.map(p => {
+        const amt = Number(p.amount)
+        const type = (p.payment_type || '').toLowerCase().trim()
+        const isCapital = ['capital', 'principal', 'abono'].includes(type)
+        if (isCapital) {
+            currentBalance -= amt
+        }
+        return {
+            ...p,
+            runningBalance: Math.max(0, currentBalance),
+            isCapital
+        }
+    })
 
     return (
         <div className="min-h-screen bg-white text-slate-900 font-sans">
@@ -141,33 +160,34 @@ export default function LoanReportPage() {
                 </header>
 
                 {/* EXECUTIVE SUMMARY */}
-                <div className="grid grid-cols-3 gap-8 mb-12">
-                    <div className="p-6 bg-slate-50 rounded-xl border border-slate-100">
-                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Monto Prestado</p>
-                        <div className="text-3xl font-bold text-slate-900">${Number(loan.amount).toLocaleString()}</div>
-                        <p className="text-xs text-slate-500 mt-1">
-                            Inicio: {format(new Date(loan.start_date), 'dd MMM yyyy')}
+                <div className="grid grid-cols-4 gap-4 mb-12">
+                    <div className="p-5 bg-slate-50 rounded-xl border border-slate-100">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Monto Inicial</p>
+                        <div className="text-xl font-bold text-slate-900">${stats.totalPrincipal.toLocaleString()}</div>
+                        <p className="text-[10px] text-slate-500 mt-1">
+                            {format(new Date(loan.start_date), 'dd MMM yyyy')}
                         </p>
                     </div>
-                    <div className="p-6 bg-slate-50 rounded-xl border border-slate-100">
-                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Total Pagado</p>
-                        <div className="text-3xl font-bold text-green-600">${stats.amountPaid.toLocaleString()}</div>
-                        <p className="text-xs text-slate-500 mt-1">
-                            {payments.length} Cuotas registradas
+                    <div className="p-5 bg-emerald-50 rounded-xl border border-emerald-100">
+                        <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider mb-1">Abonado a Capital</p>
+                        <div className="text-xl font-bold text-emerald-700">${stats.capitalPaid.toLocaleString()}</div>
+                        <p className="text-[10px] text-emerald-600 mt-1">
+                            {Math.round((stats.capitalPaid / stats.totalPrincipal) * 100)}% del total
                         </p>
                     </div>
-                    <div className="p-6 bg-slate-50 rounded-xl border border-slate-100">
-                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Estado Actual</p>
-                        <div className="flex items-center gap-2">
-                            {loan.status === 'active' && <CheckCircle2 className="h-6 w-6 text-blue-600" />}
-                            {loan.status === 'defaulted' && <AlertCircle className="h-6 w-6 text-red-600" />}
-                            <div className={`text-2xl font-bold ${loan.status === 'active' ? 'text-blue-600' :
-                                loan.status === 'defaulted' ? 'text-red-600' : 'text-slate-900'
-                                }`}>
-                                {loan.status === 'active' ? 'Al Día' :
-                                    loan.status === 'defaulted' ? 'En Mora' : 'Finalizado'}
-                            </div>
-                        </div>
+                    <div className="p-5 bg-blue-50 rounded-xl border border-blue-100">
+                        <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wider mb-1">Saldo Pendiente</p>
+                        <div className="text-2xl font-black text-blue-700">${stats.balance.toLocaleString()}</div>
+                        <p className="text-[10px] text-blue-600 mt-1 font-bold italic">
+                            Capital Real por pagar
+                        </p>
+                    </div>
+                    <div className="p-5 bg-amber-50 rounded-xl border border-amber-100">
+                        <p className="text-[10px] font-bold text-amber-600 uppercase tracking-wider mb-1">Intereses Pagados</p>
+                        <div className="text-xl font-bold text-amber-700">${stats.interestPaid.toLocaleString()}</div>
+                        <p className="text-[10px] text-amber-600 mt-1">
+                            Fuera del capital
+                        </p>
                     </div>
                 </div>
 
@@ -224,28 +244,33 @@ export default function LoanReportPage() {
                     <h3 className="text-sm font-bold text-slate-900 mb-4 border-l-4 border-slate-900 pl-3">Detalle de Movimientos</h3>
                     <table className="w-full text-sm text-left border-collapse">
                         <thead>
-                            <tr className="border-b-2 border-slate-200">
-                                <th className="py-3 font-bold text-slate-500">Fecha</th>
-                                <th className="py-3 font-bold text-slate-500">Concepto</th>
-                                <th className="py-3 font-bold text-slate-500">Referencia / Notas</th>
-                                <th className="py-3 font-bold text-slate-500 text-right">Monto</th>
+                            <tr className="border-b-2 border-slate-200 uppercase text-[10px] tracking-widest text-slate-400">
+                                <th className="py-4 font-black">Fecha</th>
+                                <th className="py-4 font-black">Concepto</th>
+                                <th className="py-4 font-black text-right">Monto</th>
+                                <th className="py-4 font-black text-right pr-4">Saldo Restante</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
-                            {payments.map((p) => (
-                                <tr key={p.id}>
-                                    <td className="py-3 text-slate-900 font-medium">
+                            {tableData.map((p) => (
+                                <tr key={p.id} className={p.isCapital ? "bg-emerald-50/20" : ""}>
+                                    <td className="py-4 text-slate-900 font-medium">
                                         {format(new Date(p.payment_date), 'dd/MM/yyyy')}
                                     </td>
-                                    <td className="py-3 text-slate-600 capitalize">
-                                        {p.payment_type === 'interest' ? 'Pago de Intereses' :
-                                            p.payment_type === 'capital' ? 'Abono a Capital' : 'Cuota General'}
+                                    <td className="py-4">
+                                        <div className="flex flex-col">
+                                            <span className={`font-bold ${p.isCapital ? "text-emerald-600" : "text-slate-700"}`}>
+                                                {p.payment_type === 'interest' ? 'Pago de Intereses' :
+                                                    p.payment_type === 'capital' ? 'Abono a Capital' : 'Cuota General'}
+                                            </span>
+                                            {p.notes && <span className="text-[10px] text-slate-400">{p.notes}</span>}
+                                        </div>
                                     </td>
-                                    <td className="py-3 text-slate-400 text-xs max-w-[200px] truncate">
-                                        {p.notes || '-'}
-                                    </td>
-                                    <td className="py-3 text-slate-900 font-bold text-right">
+                                    <td className={`py-4 font-bold text-right ${p.isCapital ? "text-emerald-600" : "text-slate-900"}`}>
                                         ${Number(p.amount).toLocaleString()}
+                                    </td>
+                                    <td className="py-4 text-slate-900 font-black text-right pr-4">
+                                        ${p.runningBalance.toLocaleString()}
                                     </td>
                                 </tr>
                             ))}
@@ -258,9 +283,20 @@ export default function LoanReportPage() {
                             )}
                         </tbody>
                         <tfoot>
-                            <tr className="border-t-2 border-slate-900">
-                                <td colSpan={3} className="py-4 text-right font-bold text-slate-900 uppercase pr-8">Total Recaudado</td>
-                                <td className="py-4 text-right font-extrabold text-xl text-slate-900">${stats.amountPaid.toLocaleString()}</td>
+                            <tr className="border-t-2 border-slate-900 bg-slate-50">
+                                <td colSpan={2} className="py-6 text-right font-black text-slate-900 uppercase pr-8">Resumen Final</td>
+                                <td className="py-6 text-right font-bold text-slate-500 border-l border-slate-200 px-4">
+                                    <div className="flex flex-col">
+                                        <span className="text-[10px]">TOTAL PAGADO</span>
+                                        <span className="text-lg text-slate-900">${stats.amountPaid.toLocaleString()}</span>
+                                    </div>
+                                </td>
+                                <td className="py-6 text-right font-black text-slate-900 border-l border-slate-200 pr-4 pl-4 bg-slate-100">
+                                    <div className="flex flex-col">
+                                        <span className="text-[10px] text-blue-600">DEUDA CAPITAL</span>
+                                        <span className="text-2xl text-blue-700">${stats.balance.toLocaleString()}</span>
+                                    </div>
+                                </td>
                             </tr>
                         </tfoot>
                     </table>
