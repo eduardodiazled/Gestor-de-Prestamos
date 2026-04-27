@@ -498,26 +498,31 @@ export default function InvestorDetailsPage() {
                             {transactions.map((t, idx) => {
                                 const isOut = t.flow === 'out'
                                 const isReinvestment = isOut && t.type === 'reinvestment'
+                                const isInjection = isOut && t.type === 'injection'
                                 const isCapital = t.payment_type === 'capital' || t.payment_type === 'principal'
 
                                 const amount = Number(t.amount)
                                 const netAmount = (isOut || isCapital) ? amount : (amount * (1 - ((t.loan?.admin_fee_percent || 40) / 100)))
 
                                 // Color logic: reinvestment = blue, payout = red, income = green
-                                const colorClass = isReinvestment ? 'text-blue-600' : (isOut ? 'text-red-600' : 'text-green-600')
-                                const bgClass = isReinvestment ? 'bg-blue-50 border-blue-200' : 'bg-slate-50'
+                                const colorClass = isReinvestment ? 'text-blue-600' : isInjection ? 'text-emerald-600' : (isOut ? 'text-red-600' : 'text-green-600')
+                                const bgClass = isReinvestment ? 'bg-blue-50 border-blue-200' : isInjection ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50'
 
                                 // Label logic
                                 let label = ''
                                 if (isReinvestment) label = 'Reinversión a Capital'
+                                else if (isInjection) label = 'Aporte Externo'
                                 else if (isOut) label = 'Retiro / Transferencia a Socia'
                                 else if (isCapital) label = 'Devolución Capital'
                                 else label = 'Pago Intereses'
 
                                 let title = ''
                                 if (isReinvestment) title = '🔄 ' + (t.notes || 'Reinversión')
+                                else if (isInjection) title = '➕ ' + (t.notes || 'Aporte Externo')
                                 else if (isOut) title = 'Retiro de Fondos'
                                 else title = t.loan?.client?.full_name || 'Pago Cliente'
+
+                                const isNegativeDisplay = isOut && !isInjection
 
                                 return (
                                     <div key={idx} className={`flex items-center justify-between p-3 border rounded-lg ${bgClass}`}>
@@ -536,7 +541,7 @@ export default function InvestorDetailsPage() {
                                         </div>
                                         <div className="text-right">
                                             <p className={`font-bold text-sm ${colorClass}`}>
-                                                {isOut ? '-' : '+'}${netAmount.toLocaleString()}
+                                                {isNegativeDisplay ? '-' : '+'}${netAmount.toLocaleString()}
                                             </p>
                                             {!isOut && !isCapital && (
                                                 <p className="text-[10px] text-slate-400">Bruto: ${amount.toLocaleString()}</p>
