@@ -36,7 +36,7 @@ export default function InvestorDetailsPage() {
     })
 
     const [isMoveOpen, setIsMoveOpen] = useState(false)
-    const [moveType, setMoveType] = useState<'payout' | 'reinvestment'>('payout')
+    const [moveType, setMoveType] = useState<'payout' | 'reinvestment' | 'injection'>('payout')
     const [moveSource, setMoveSource] = useState<'earnings' | 'capital'>('earnings')
     const [moveLoading, setMoveLoading] = useState(false)
 
@@ -194,6 +194,13 @@ export default function InvestorDetailsPage() {
                         // Move from profit to capital reserve
                         profitWallet -= e.amount
                         capitalWallet += e.amount
+                    } else if (e.payoutType === 'injection') {
+                        // External fixed injection
+                        if (e.source === 'capital') {
+                            capitalWallet += e.amount
+                        } else {
+                            profitWallet += e.amount
+                        }
                     } else {
                         // Direct withdrawal from chosen source
                         if (e.source === 'capital') {
@@ -265,7 +272,7 @@ export default function InvestorDetailsPage() {
             amount: amount,
             type: moveType,
             fund_source: moveSource,
-            notes: moveNotes || (moveType === 'reinvestment' ? 'Reinversión a capital' : 'Retiro manual dashboard')
+            notes: moveNotes || (moveType === 'reinvestment' ? 'Reinversión a capital' : moveType === 'injection' ? 'Aporte de capital externo' : 'Retiro manual dashboard')
         })
 
         if (error) {
@@ -309,6 +316,12 @@ export default function InvestorDetailsPage() {
                         </div>
                     </div>
                     <div className="flex gap-2 justify-end mt-4">
+                        <Button
+                            onClick={() => { setMoveType('injection'); setIsMoveOpen(true); }}
+                            size="sm" variant="secondary" className="bg-emerald-100 text-emerald-800 hover:bg-emerald-200 text-xs font-bold"
+                        >
+                            ➕ Aporte Externo
+                        </Button>
                         <Button
                             onClick={() => { setMoveType('payout'); setIsMoveOpen(true); }}
                             size="sm" variant="secondary" className="text-slate-900 text-xs font-bold"
@@ -542,8 +555,12 @@ export default function InvestorDetailsPage() {
                 <DialogContent className="sm:max-w-[425px]">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
-                            {moveType === 'payout' ? <DollarSign className="h-5 w-5 text-red-500" /> : <TrendingUp className="h-5 w-5 text-blue-500" />}
-                            {moveType === 'payout' ? 'Registrar Retiro / Pago' : 'Reinvertir Ganancias'}
+                            {moveType === 'payout' ? <DollarSign className="h-5 w-5 text-red-500" /> : 
+                             moveType === 'injection' ? <TrendingUp className="h-5 w-5 text-emerald-500" /> :
+                             <TrendingUp className="h-5 w-5 text-blue-500" />}
+                            {moveType === 'payout' ? 'Registrar Retiro / Pago' : 
+                             moveType === 'injection' ? 'Ingresar Aporte Externo' :
+                             'Reinvertir Ganancias'}
                         </DialogTitle>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">

@@ -146,8 +146,8 @@ export default function InvestorDashboard() {
             }
             const payoutMovements = (myPayouts || []).map((p: any) => ({
                 id: p.id,
-                type: 'outflow',
-                title: p.type === 'reinvestment' ? 'Reinversión Ganancia' : 'Retiro Registrado',
+                type: p.type === 'injection' ? 'inflow' : 'outflow',
+                title: p.type === 'reinvestment' ? 'Reinversión Ganancia' : p.type === 'injection' ? 'Aporte de Capital Externo' : 'Retiro Registrado',
                 subtitle: format(new Date(p.date), 'dd MMM yyyy', { locale: es }),
                 rawDate: new Date(p.date).getTime(),
                 amount: Number(p.amount),
@@ -242,6 +242,13 @@ export default function InvestorDashboard() {
                         // Movement from profit to capital
                         profitWallet -= e.amount
                         capitalWallet += e.amount
+                    } else if (e.payoutType === 'injection') {
+                        // External injection
+                        if (e.source === 'capital') {
+                            capitalWallet += e.amount
+                        } else {
+                            profitWallet += e.amount
+                        }
                     } else {
                         // Direct withdrawal from chosen source
                         if (e.source === 'capital') {
