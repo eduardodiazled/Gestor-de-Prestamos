@@ -1,6 +1,6 @@
 import { differenceInDays, isAfter } from 'date-fns';
 
-export const GRACE_PERIOD_DAYS = 5;
+export const GRACE_PERIOD_DAYS = 8;
 export const ADMIN_FEE_PERCENT = 40; // Default
 
 export interface Loan {

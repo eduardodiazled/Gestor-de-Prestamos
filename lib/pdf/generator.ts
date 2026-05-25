@@ -108,6 +108,14 @@ export const generatePaymentReceipt = async (data: ReceiptData) => { // Changed 
 
     y += 60;
 
+    // Add signature image automatically above the signature line
+    try {
+        const signatureData = await loadImage('/firma_luis.png');
+        doc.addImage(signatureData, 'PNG', margin + 10, y - 22, 60, 20);
+    } catch (e) {
+        console.error("Error loading signature image", e);
+    }
+
     // Signature Area
     doc.line(margin, y, margin + 80, y);
     doc.text("Firma Autorizada", margin, y + 10);
@@ -284,6 +292,14 @@ export const generatePazYSalvo = async (data: { // Changed to async
     // Signature
     doc.text("Atentamente,", margin, y);
     y += 35;
+
+    // Add signature image automatically above the signature line
+    try {
+        const signatureData = await loadImage('/firma_luis.png');
+        doc.addImage(signatureData, 'PNG', margin + 10, y - 22, 60, 20);
+    } catch (e) {
+        console.error("Error loading signature image", e);
+    }
 
     doc.line(margin, y, margin + 80, y);
     doc.setFont("helvetica", "bold");

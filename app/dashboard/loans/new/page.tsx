@@ -288,11 +288,17 @@ function LoanWizardContent() {
 
             // 4. Create Loan
             const lValues = loanForm.getValues()
+            const selectedInvestor = investors.find(i => i.id === lValues.investor_id)
+            const adminFeePercent = lValues.investor_id === '477e4c55-88f5-44c3-bcdc-38fa68508a1a'
+                ? 50
+                : (selectedInvestor?.admin_fee_percent ?? 40)
+
             const { error: loanError } = await supabase.from('loans').insert({
                 client_id: clientId,
                 investor_id: lValues.investor_id || user.id, // Fixed: Use selected investor or fallback to admin
                 amount: lValues.amount,
                 interest_rate: lValues.interestRate,
+                admin_fee_percent: adminFeePercent,
                 start_date: lValues.startDate,
                 cutoff_day: new Date(lValues.startDate).getDate(), // UTC issue might persist, but acceptable for now
                 status: 'active',
