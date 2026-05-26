@@ -293,17 +293,17 @@ export default function InvestorDetailsPage() {
             </Button>
 
             {/* HEADER */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-900 text-white p-6 rounded-xl">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-900 text-white p-6 rounded-xl w-full overflow-hidden">
                 <div>
                     <h1 className="text-2xl font-bold">{profile?.full_name}</h1>
-                    <p className="text-slate-400 text-sm">Portal de Socia</p>
+                    <p className="text-slate-400 text-sm">Portal de Socios</p>
                 </div>
-                <div className="text-right">
+                <div className="text-left md:text-right w-full md:w-auto">
                     <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">Caja Disponible (Poder Total)</p>
-                    <div className="flex items-center gap-3 justify-end">
+                    <div className="flex items-center gap-3 justify-start md:justify-end">
                         <p className="text-4xl font-bold text-white">${stats.walletBalance?.toLocaleString()}</p>
                     </div>
-                    <div className="flex gap-4 justify-end mt-2 text-[11px] font-medium border-t border-slate-800 pt-2">
+                    <div className="flex flex-wrap gap-4 justify-start md:justify-end mt-2 text-[11px] font-medium border-t border-slate-800 pt-2">
                         <div className="flex items-center gap-1.5">
                             <div className="h-2 w-2 rounded-full bg-green-500"></div>
                             <span className="text-slate-300">Ganancias:</span>
@@ -315,22 +315,22 @@ export default function InvestorDetailsPage() {
                             <span className="text-blue-400">${stats.capitalBalance.toLocaleString()}</span>
                         </div>
                     </div>
-                    <div className="flex gap-2 justify-end mt-4">
+                    <div className="flex flex-col sm:flex-row gap-2 justify-start md:justify-end mt-4 w-full sm:w-auto">
                         <Button
                             onClick={() => { setMoveType('injection'); setIsMoveOpen(true); }}
-                            size="sm" variant="secondary" className="bg-emerald-100 text-emerald-800 hover:bg-emerald-200 text-xs font-bold"
+                            size="sm" variant="secondary" className="bg-emerald-100 text-emerald-800 hover:bg-emerald-200 text-xs font-bold w-full sm:w-auto"
                         >
                             ➕ Aporte Externo
                         </Button>
                         <Button
                             onClick={() => { setMoveType('payout'); setIsMoveOpen(true); }}
-                            size="sm" variant="secondary" className="text-slate-900 text-xs font-bold"
+                            size="sm" variant="secondary" className="text-slate-900 text-xs font-bold w-full sm:w-auto"
                         >
                             💸 Registrar Retiro
                         </Button>
                         <Button
                             onClick={() => { setMoveType('reinvestment'); setIsMoveOpen(true); }}
-                            size="sm" className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold"
+                            size="sm" className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold w-full sm:w-auto"
                         >
                             🔄 Reinvertir Ganancias
                         </Button>
