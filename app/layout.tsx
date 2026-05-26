@@ -15,8 +15,11 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "ZALDO | Fintech",
   description: "Soluciones Fintech",
+  manifest: "/manifest.json",
   icons: {
-    icon: '/icon.png',
+    icon: "/logo.png",
+    shortcut: "/logo.png",
+    apple: "/logo.png",
   },
 };
 
