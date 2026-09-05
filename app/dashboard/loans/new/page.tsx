@@ -79,7 +79,8 @@ function LoanWizardContent() {
 
     // Draft & Pre-fill Management
     const searchParams = useSearchParams()
-    const draftId = searchParams.get('id') // Load draft
+    const paramDraftId = searchParams.get('id') // Load draft
+    const [draftId, setDraftId] = useState<string | null>(paramDraftId)
     const prefillClientId = searchParams.get('clientId') // Load existing client
 
     useEffect(() => {
