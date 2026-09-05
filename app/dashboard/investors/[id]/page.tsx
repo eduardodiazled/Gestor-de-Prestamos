@@ -89,7 +89,10 @@ export default function InvestorDetailsPage() {
                     .order('payment_date', { ascending: false })
                 paymentsData = pays || []
             }
-            const finalPayments = paymentsData
+            const finalPayments = paymentsData.map(p => ({
+                ...p,
+                loan: loansData.find(ld => ld.id === p.loan_id)
+            }))
 
             // 4. Fetch Payouts (Retiros)
             const { data: payoutsData } = await supabase
@@ -388,7 +391,7 @@ export default function InvestorDetailsPage() {
                 <AlertCircle className="h-5 w-5 shrink-0" />
                 <div>
                     <h4 className="font-bold">¿Cómo se calcula la &quot;Caja Disponible&quot;?</h4>
-                    <p>Es tu <strong>Ganancia Neta</strong> (60% de intereses cobrados), menos los <strong>Retiros</strong> que te hayamos transferido y las <strong>Reinversiones</strong> que hayas hecho a nuevo capital.</p>
+                    <p>Es tu <strong>Ganancia Neta</strong> (intereses cobrados menos la comisión de administración), menos los <strong>Retiros</strong> que te hayamos transferido y las <strong>Reinversiones</strong> que hayas hecho a nuevo capital.</p>
                     <p className="mt-1 font-medium">Para reinvertir ganancias en un nuevo préstamo, primero usa el botón &quot;Reinvertir Ganancias&quot; y luego crea el préstamo.</p>
                 </div>
             </div>
