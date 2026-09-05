@@ -149,6 +149,7 @@ function LoanWizardContent() {
             }).select('id').single()
 
             if (data && !draftId) {
+                setDraftId(data.id)
                 // Update URL silently without reload
                 const newUrl = `/dashboard/loans/new?id=${data.id}`
                 window.history.replaceState({ ...window.history.state, as: newUrl, url: newUrl }, '', newUrl)
@@ -174,6 +175,9 @@ function LoanWizardContent() {
     const handleGeneratePDF = () => {
         const cValues = clientForm.getValues()
         const lValues = loanForm.getValues()
+
+        // Auto-save draft when generating PDF
+        saveDraft(2, { client: cValues, loan: lValues })
 
         // Fix Types: Ensure amount is treated as number
         const amountVal = Number(lValues.amount) || 0
@@ -486,7 +490,10 @@ function LoanWizardContent() {
                             <Button variant="ghost" onClick={() => setStep(1)}>
                                 <ArrowLeft className="mr-2 h-4 w-4" /> Volver
                             </Button>
-                            <Button onClick={() => setStep(3)}>
+                            <Button onClick={() => {
+                                saveDraft(3, { client: clientForm.getValues(), loan: loanForm.getValues() })
+                                setStep(3)
+                            }}>
                                 Ya lo tengo firmado <ArrowRight className="ml-2 h-4 w-4" />
                             </Button>
                         </div>

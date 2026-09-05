@@ -213,7 +213,7 @@ export const generatePromissoryNote = async (data: { // Changed to async
     doc.text(splitInterest, margin, y);
     y += (splitInterest.length * 7) + 5;
 
-    const conditionsText = `El pago de los intereses se realizará en ${data.city} hasta los 8 días posteriores al mes siguiente del desembolso del dinero, si se incumple la fecha se empezará a cobrar intereses de mora desde el día 9 en adelante sobre los intereses pactados.`;
+    const conditionsText = `El pago de los intereses se realizará en ${data.city} hasta los 8 días posteriores a la fecha de cobro. Si el día 9 después del cobro no se ha realizado el pago, se causará una mora del 10% sobre la cuota del interés por cada día de retraso. Por ejemplo, si el día 12 no pagas, el día 13 ya se suma la mora de $10.000 (10% de la cuota) y así sucesivamente por cada día; por esta razón se concede un plazo máximo de 8 días para pagar sin penalidad.`;
     const splitConditions = doc.splitTextToSize(conditionsText, 170);
     doc.text(splitConditions, margin, y);
     y += 30;

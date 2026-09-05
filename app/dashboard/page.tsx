@@ -62,14 +62,16 @@ export default function Dashboard() {
             }
             setProfile(profileData)
 
-            // 1. Fetch Loans & Payments
-            const [{ data: loans }, { data: payments }, { data: payouts }] = await Promise.all([
+            // 1. Fetch Loans, Payments, Payouts & Drafts
+            const [{ data: loans }, { data: payments }, { data: payouts }, { data: draftsData }] = await Promise.all([
                 supabase.from('loans').select('*, client:clients(*), investor:profiles(*)'),
                 supabase.from('payments').select('*'),
-                supabase.from('investor_payouts').select('*')
+                supabase.from('investor_payouts').select('*'),
+                supabase.from('loan_applications').select('*').order('updated_at', { ascending: false })
             ])
 
             setRawLoans(loans)
+            setDrafts(draftsData || [])
 
             if (!loans) {
                 setLoading(false)
