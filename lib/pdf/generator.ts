@@ -1,6 +1,7 @@
 
 import jsPDF from 'jspdf';
 import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 interface ReceiptData {
     id: string; // Payment ID
@@ -213,10 +214,32 @@ export const generatePromissoryNote = async (data: { // Changed to async
     doc.text(splitInterest, margin, y);
     y += (splitInterest.length * 7) + 5;
 
-    const conditionsText = `El pago de los intereses se realizará en ${data.city} hasta los 8 días posteriores a la fecha de cobro. Si el día 9 después del cobro no se ha realizado el pago, se causará una mora del 10% sobre la cuota del interés por cada día de retraso. Por ejemplo, si el día 12 no pagas, el día 13 ya se suma la mora de $10.000 (10% de la cuota) y así sucesivamente por cada día; por esta razón se concede un plazo máximo de 8 días para pagar sin penalidad.`;
+    const rateVal = Number(data.interestRate) || 10;
+    const monthlyInterestVal = Math.round(data.amount * (rateVal / 100));
+    const dailyMoraVal = Math.round(monthlyInterestVal * 0.10);
+
+    let cobroExample = "12 de Octubre";
+    let moraExample = "13 de Octubre";
+
+    if (data.startDate) {
+        try {
+            const startDateObj = new Date(data.startDate + 'T12:00:00');
+            if (!isNaN(startDateObj.getTime())) {
+                const dayNum = startDateObj.getDate();
+                const nextDayNum = dayNum + 1;
+                const monthStr = format(startDateObj, "MMMM", { locale: es });
+                cobroExample = `${dayNum} de ${monthStr}`;
+                moraExample = `${nextDayNum} de ${monthStr}`;
+            }
+        } catch (e) {
+            console.error("Error parsing start date for pagare example", e);
+        }
+    }
+
+    const conditionsText = `El pago de los intereses ($${monthlyInterestVal.toLocaleString()} M/CTE) se realizará en ${data.city} hasta los 8 días posteriores a la fecha de cobro. Si el día 9 después del cobro no se ha realizado el pago, se causará una mora del 10% sobre la cuota del interés ($${dailyMoraVal.toLocaleString()} M/CTE extras por cada día de retraso). Por ejemplo: para tu cuota de $${monthlyInterestVal.toLocaleString()}, si la fecha de cobro es el ${cobroExample} y no pagas, el día ${moraExample} ya se suma la mora de $${dailyMoraVal.toLocaleString()} (10% de la cuota) y así sucesivamente por cada día; por esta razón se concede un plazo máximo de 8 días para pagar sin penalidad.`;
     const splitConditions = doc.splitTextToSize(conditionsText, 170);
     doc.text(splitConditions, margin, y);
-    y += 30;
+    y += (splitConditions.length * 6) + 15;
 
     doc.text("Atentamente,", margin, y);
     y += 40;
